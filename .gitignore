@@ -1,0 +1,60 @@
+# Local configuration and secrets
+config.yaml
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# LS-PrePost generated runtime artifacts
+.lspp_mcp/
+lspost.*
+*.cfile
+*.msg
+*.log
+*.out
+
+# LS-DYNA result and solver files
+**/d3plot*
+**/d3part*
+**/binout*
+**/nodout*
+**/matsum
+**/glstat
+**/rcforc
+**/d3hsp
+**/d3thdt
+**/messag
+**/status.out
+*.k
+*.inc
+*.lsda
+
+!src/lspp_mcp/tools/d3plot.py
+!src/lspp_mcp/tools/binout.py
+
+# Post-processing outputs
+*.png
+*.csv
+*.xml
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
