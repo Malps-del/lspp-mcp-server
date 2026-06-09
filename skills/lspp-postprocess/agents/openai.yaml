@@ -1,0 +1,4 @@
+interface:
+  display_name: "LS-PrePost Postprocess"
+  short_description: "Guide LS-PrePost MCP post-processing"
+  default_prompt: "Use $lspp-postprocess to plan and run an efficient LS-PrePost MCP post-processing task."
