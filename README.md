@@ -37,40 +37,10 @@ C:\Users\<你的用户名>\Projects\lspp-mcp
 - Python 3.10 或更高版本
 - LS-PrePost
 - Codex
-- GitHub CLI `gh`，可选但推荐，用于更方便地登录 GitHub 和克隆 private 仓库
-
-安装好 GitHub CLI 后，打开新的 PowerShell，确认：
-
-```powershell
-gh --version
-```
-
-如果仓库是 private，先登录 GitHub：
-
-```powershell
-gh auth login
-gh auth status
-```
-
-推荐登录选项：
-
-```text
-GitHub.com
-HTTPS
-Login with a web browser
-```
 
 ### 2. 克隆仓库
 
-推荐用 GitHub CLI：
-
-```powershell
-$McpDir = "D:\tools\lspp-mcp"  # 可换成你想放置本项目的任意目录
-gh repo clone Malps-del/lspp-mcp-server $McpDir
-Set-Location $McpDir
-```
-
-也可以用 Git：
+用 Git 克隆仓库：
 
 ```powershell
 $McpDir = "D:\tools\lspp-mcp"  # 可换成你想放置本项目的任意目录
