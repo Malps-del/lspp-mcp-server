@@ -200,6 +200,14 @@ $env:LSPP_MCP_CONFIG="D:/tools/lspp-mcp/config.yaml"  # 改成你的实际 confi
 
 Codex 会把它映射为 `export_d3plot_contour`，并自动设置输入文件、输出图片、变量名、状态帧、视角和云图层级等参数。
 
+图片格式会根据输出文件扩展名自动选择。例如输出到 `.jpg` 会使用 JPG，输出到 `.wrl` 会使用 VRML/WRL。也可以明确说“输出为 jpg 格式”。当前在 LS-PrePost 4.12 cfile 自动化中已验证支持：
+
+```text
+png, jpg, bmp, gif, wrl
+```
+
+LS-PrePost 界面下拉框里还可能显示 `pdf`、`tif`、`pcx`、`ps`、`eps`、`tex`、`svg`、`pgf` 等格式，但这些格式在当前 4.12 环境下用同一套 cfile `print` 命令没有稳定生成非空文件，因此暂时不作为 MCP 支持格式。
+
 再比如提取节点历史曲线：
 
 ```text
@@ -303,7 +311,7 @@ run.json
 
 ### export_d3plot_contour
 
-从 `d3plot` 或 `d3part` 导出指定变量、指定状态帧、指定视角的云图 PNG。支持 part 显示控制、图例/坐标轴显示控制、背景色、窗口尺寸和云图显示层级。
+从 `d3plot` 或 `d3part` 导出指定变量、指定状态帧、指定视角的云图文件。支持 `png`、`jpg`、`bmp`、`gif`、`wrl` 输出格式，并支持 part 显示控制、图例/坐标轴显示控制、背景色、窗口尺寸和云图显示层级。
 
 ### extract_ascii_curve
 

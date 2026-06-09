@@ -27,6 +27,25 @@ from ._common import (
 
 VALID_VIEWS = {"front", "back", "top", "bottom", "left", "right", "isometric"}
 VALID_BACKGROUNDS = {"white": "1 1 1", "black": "0 0 0"}
+VALID_IMAGE_FORMATS = {
+    "png",
+    "jpg",
+    "bmp",
+    "gif",
+    "wrl",
+}
+IMAGE_FORMAT_ALIASES = {
+    "jpeg": "jpg",
+    "vrml": "wrl",
+    "vrml2": "wrl",
+}
+PRINT_FORMATS = {
+    "png": "png",
+    "jpg": "jpg",
+    "bmp": "bmp",
+    "gif": "gif",
+    "wrl": "vrml",
+}
 
 
 def _view_command(view: str) -> str:
@@ -53,6 +72,34 @@ def _range_level_commands(range_level: int | None) -> str:
     return f"range level {level}\nrange pal update"
 
 
+def _normalize_image_format(image_format: str) -> str:
+    normalized = image_format.lower().strip().lstrip(".")
+    normalized = IMAGE_FORMAT_ALIASES.get(normalized, normalized)
+    if normalized not in VALID_IMAGE_FORMATS:
+        raise LsppValidationError(
+            "image_format must be one of: "
+            + ", ".join(sorted(VALID_IMAGE_FORMATS))
+        )
+    return normalized
+
+
+def _image_format_for_output(output: Path, image_format: str | None) -> str:
+    suffix = output.suffix.lower().lstrip(".")
+    if image_format:
+        normalized = _normalize_image_format(image_format)
+        if suffix:
+            suffix_format = _normalize_image_format(suffix)
+            if suffix_format != normalized:
+                raise LsppValidationError(
+                    "image_format does not match output file extension: "
+                    f"{normalized} vs .{suffix}"
+                )
+        return normalized
+    if suffix:
+        return _normalize_image_format(suffix)
+    return "png"
+
+
 def export_d3plot_contour(
     d3plot_path: str,
     output_png: str,
@@ -66,6 +113,7 @@ def export_d3plot_contour(
     window_size: str = "1600x1200",
     use_nographics: bool = False,
     range_level: int | None = None,
+    image_format: str | None = None,
     overwrite: bool = False,
     config: LsppConfig | None = None,
     timeout: int | None = None,
@@ -80,6 +128,7 @@ def export_d3plot_contour(
             label="d3plot file",
         )
         output = prepare_output(output_png, cfg, overwrite)
+        resolved_image_format = _image_format_for_output(output, image_format)
         fringe_code = require_variable_code(cfg.variable_maps, "d3plot_fringe", variable)
         if background not in VALID_BACKGROUNDS:
             raise LsppValidationError("background must be white or black")
@@ -97,7 +146,9 @@ def export_d3plot_contour(
             "background_rgb": VALID_BACKGROUNDS[background],
             "title_command": f'title "{safe_cfile_string(title)}"' if title else "title 0",
             "range_level_commands": _range_level_commands(range_level),
-            "output_png": quote_path(output),
+            "image_format": resolved_image_format,
+            "print_format": PRINT_FORMATS[resolved_image_format],
+            "output_image": quote_path(output),
         }
         cfile_path, log_file, run_result, output_check = execute_generated_cfile(
             output_path=output,
@@ -110,12 +161,18 @@ def export_d3plot_contour(
             config=cfg,
             timeout=timeout,
         )
-        return finalize_output_result(
+        result = finalize_output_result(
             "output_png", output, cfile_path, log_file, run_result, output_check
         )
+        result["output_image"] = result["output_png"]
+        result["image_format"] = resolved_image_format
+        return result
     except Exception as exc:
         result = result_from_validation_error(exc)
         result["output_png"] = str(output_png)
+        result["output_image"] = str(output_png)
+        if image_format:
+            result["image_format"] = image_format
         return result
 
 

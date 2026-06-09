@@ -113,7 +113,10 @@ def batch_postprocess_cases(
                         "task_type": task.get("type", ""),
                         "ok": bool(result.get("ok")),
                         "message": result.get("message", ""),
-                        "output": result.get("output_png") or result.get("output_csv") or "",
+                        "output": result.get("output_image")
+                        or result.get("output_png")
+                        or result.get("output_csv")
+                        or "",
                         "generated_cfile": result.get("generated_cfile", ""),
                         "log_file": result.get("log_file", ""),
                     }

@@ -68,7 +68,7 @@ class RunnerMockTests(unittest.TestCase):
             ):
                 result = export_d3plot_contour(
                     d3plot_path="d3plot",
-                    output_png="post/out.png",
+                    output_png="post/out.jpg",
                     variable="von_mises",
                     state_index=1,
                     view="front",
@@ -77,9 +77,44 @@ class RunnerMockTests(unittest.TestCase):
                 )
             self.assertFalse(result["ok"])
             self.assertIn("not generated", result["message"])
+            self.assertEqual(result["image_format"], "jpg")
             generated = Path(result["generated_cfile"]).read_text(encoding="utf-8")
+            self.assertIn('print jpg "', generated)
             self.assertIn("range level 50", generated)
             self.assertIn("range pal update", generated)
+
+    def test_mismatched_image_format_returns_not_ok(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "d3plot").write_text("fake", encoding="utf-8")
+            cfg = self._config(root)
+            result = export_d3plot_contour(
+                d3plot_path="d3plot",
+                output_png="post/out.wrl",
+                variable="von_mises",
+                state_index=1,
+                view="front",
+                image_format="png",
+                config=cfg,
+            )
+            self.assertFalse(result["ok"])
+            self.assertIn("does not match", result["message"])
+
+    def test_unsupported_image_format_returns_not_ok(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "d3plot").write_text("fake", encoding="utf-8")
+            cfg = self._config(root)
+            result = export_d3plot_contour(
+                d3plot_path="d3plot",
+                output_png="post/out.svg",
+                variable="von_mises",
+                state_index=1,
+                view="front",
+                config=cfg,
+            )
+            self.assertFalse(result["ok"])
+            self.assertIn("image_format must be one of", result["message"])
 
     def test_empty_output_returns_not_ok(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

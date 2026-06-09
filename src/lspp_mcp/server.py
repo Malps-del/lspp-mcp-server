@@ -46,6 +46,7 @@ def export_d3plot_contour(
     window_size: str = "1600x1200",
     use_nographics: bool = False,
     range_level: int | None = None,
+    image_format: str | None = None,
     overwrite: bool = False,
 ) -> dict[str, Any]:
     return _export_d3plot_contour(
@@ -61,6 +62,7 @@ def export_d3plot_contour(
         window_size=window_size,
         use_nographics=use_nographics,
         range_level=range_level,
+        image_format=image_format,
         overwrite=overwrite,
         config=load_config(),
     )
