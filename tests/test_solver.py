@@ -133,7 +133,7 @@ class SolverToolTests(unittest.TestCase):
             self.assertFalse(result["still_running"])
             self.assertEqual(result["diagnostics"]["completion_state"], "normal_termination")
             kwargs = fake_popen.call_args.kwargs
-            self.assertEqual(kwargs["cwd"], str(root))
+            self.assertTrue(_same_path(kwargs["cwd"], root))
             self.assertEqual(kwargs["creationflags"], subprocess.CREATE_NEW_CONSOLE)
 
     def test_run_lsdyna_solver_visible_console_timeout_leaves_process_running(self) -> None:
