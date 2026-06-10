@@ -18,6 +18,10 @@ from lspp_mcp.tools.solver import (  # noqa: E402
 from lspp_mcp.variable_maps import default_variable_maps  # noqa: E402
 
 
+def _same_path(left: str | Path, right: str | Path) -> bool:
+    return Path(left).resolve(strict=False) == Path(right).resolve(strict=False)
+
+
 class SolverToolTests(unittest.TestCase):
     def _config(self, root: Path, exe: Path | None = None) -> LsppConfig:
         return LsppConfig(
@@ -33,7 +37,7 @@ class SolverToolTests(unittest.TestCase):
             root = Path(tmp)
             result = validate_lsdyna_solver(config=self._config(root))
             self.assertTrue(result["ok"])
-            self.assertEqual(result["work_dir"], str(root))
+            self.assertTrue(_same_path(result["work_dir"], root))
 
     def test_run_lsdyna_solver_dry_run_builds_safe_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -49,7 +53,8 @@ class SolverToolTests(unittest.TestCase):
                 config=self._config(root),
             )
             self.assertTrue(result["ok"])
-            self.assertIn(f"i={k_file}", result["command"])
+            k_arg = next(item for item in result["command"] if item.startswith("i="))
+            self.assertTrue(_same_path(k_arg[2:], k_file))
             self.assertIn("ncpu=4", result["command"])
             self.assertIn("memory=200m", result["command"])
             self.assertIn("jobid=test01", result["command"])
