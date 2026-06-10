@@ -91,6 +91,40 @@ DATABASE_KEYWORDS = {
 
 _INT_RE = re.compile(r"^[+-]?\d+$")
 _NUMBER_SPLIT_RE = re.compile(r"[\s,]+")
+_LABEL_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_/-]*|-")
+_PARAM_REF_RE = re.compile(r"&([A-Za-z][A-Za-z0-9_]*)")
+
+FIELD_SCHEMAS: dict[str, list[list[str]]] = {
+    "*CONTROL_ALE": [
+        ["dct", "nadv", "meth", "afac", "bfac", "cfac", "dfac", "efac"],
+        ["start", "end", "aafac", "vfact", "prit", "ebc", "pref", "nsidebc"],
+        ["ncpl", "nbkt", "imascl", "checkr", "beamin", "mmgpref", "pdifmx", "dtmufac"],
+        ["optimpp", "ialedr", "bndflx", "minmas"],
+    ],
+    "*CONTROL_ENERGY": [
+        ["hgen", "rwen", "slnten", "rylen", "irgen", "maten", "drlen", "disen"],
+    ],
+    "*CONTROL_TERMINATION": [
+        ["endtim", "endcyc", "dtmin", "endeng", "endmas", "nosol"],
+    ],
+    "*CONTROL_TIMESTEP": [
+        ["dtinit", "tssfac", "isdo", "tslimt", "dt2ms", "lctm", "erode", "ms1st"],
+    ],
+    "*DATABASE_BINARY_D3PLOT": [["dt", "lcdt", "beam", "npltc", "psetid"]],
+    "*DATABASE_GLSTAT": [["dt", "binary", "lcur", "ioopt"]],
+    "*DATABASE_MATSUM": [["dt", "binary", "lcur", "ioopt"]],
+    "*DATABASE_TRACER": [["time", "track", "x", "y", "z", "ammgid", "nid", "radius"]],
+    "*DATABASE_TRHIST": [["dt", "binary", "lcur", "ioopt"]],
+    "*BOUNDARY_SALE_MESH_FACE": [
+        ["bctype", "mshid", "negx", "posx", "negy", "posy", "negz", "posz"],
+    ],
+    "*INITIAL_DETONATION": [["pid", "x", "y", "z", "lt", "-", "mmgset"]],
+    "*ALE_STRUCTURED_MESH": [["mshid", "pid", "nbid", "ebid"]],
+    "*ALE_STRUCTURED_MESH_CONTROL_POINTS": [
+        ["mshid", "dir", "start", "end", "ratio", "bias"],
+    ],
+    "*ALE_STRUCTURED_MULTI-MATERIAL_GROUP_AXISYM": [["mshid", "mmgset"]],
+}
 
 
 @dataclass(slots=True)
@@ -188,6 +222,253 @@ def _resolve_include(base_file: Path, include_text: str) -> Path:
 def _belongs_to_group(keyword: str, prefixes: tuple[str, ...]) -> bool:
     base = _base_keyword(keyword)
     return any(base.startswith(prefix) for prefix in prefixes)
+
+
+def _references(value: str) -> list[str]:
+    return sorted({match.group(1) for match in _PARAM_REF_RE.finditer(value)})
+
+
+def _value_kind(value: str) -> str:
+    text = value.strip()
+    if not text:
+        return "empty"
+    if _references(text):
+        return "parameter_reference"
+    try:
+        float(text)
+    except ValueError:
+        return "text"
+    return "number"
+
+
+def _field(name: str, value: str, field_index: int) -> dict[str, Any]:
+    refs = _references(value)
+    return {
+        "name": name,
+        "value": value.strip(),
+        "field_index": field_index,
+        "kind": _value_kind(value),
+        "references": refs,
+        "normalized_references": [ref.lower() for ref in refs],
+    }
+
+
+def _comment_labels(line: str) -> list[str]:
+    text = line.lstrip()
+    if text.startswith("$#"):
+        text = text[2:]
+    elif text.startswith("$"):
+        text = text[1:]
+    return [match.group(0).lower() for match in _LABEL_RE.finditer(text)]
+
+
+def _split_data_values(line: str, expected_count: int | None = None) -> list[str]:
+    stripped = line.strip()
+    if not stripped:
+        return []
+    if "," in stripped:
+        return [part.strip() for part in stripped.split(",")]
+    if expected_count and len(line) > 10:
+        chunks = [line[index : index + 10].strip() for index in range(0, len(line), 10)]
+        combined: list[str] = []
+        for chunk in chunks:
+            if chunk.startswith("&") and combined:
+                combined[-1] = f"{combined[-1]}{chunk}"
+            else:
+                combined.append(chunk)
+        chunks = combined
+        if len(chunks) >= min(expected_count, 2):
+            return chunks[:expected_count]
+    return [part for part in _NUMBER_SPLIT_RE.split(stripped) if part]
+
+
+def _schema_for(keyword: str) -> list[list[str]] | None:
+    base = _base_keyword(keyword)
+    if keyword in FIELD_SCHEMAS:
+        return FIELD_SCHEMAS[keyword]
+    return FIELD_SCHEMAS.get(base)
+
+
+def _parse_parameter_block(block: KeywordBlock) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for local_index, line in enumerate(block.lines[1:], start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("$"):
+            continue
+        tokens = _split_data_values(line)
+        fields: list[dict[str, Any]] = []
+        for group_index in range(0, len(tokens), 3):
+            group = tokens[group_index : group_index + 3]
+            if len(group) < 3:
+                continue
+            parameter_index = group_index // 3 + 1
+            fields.extend(
+                [
+                    _field(f"type_{parameter_index}", group[0], group_index),
+                    _field(f"name_{parameter_index}", group[1], group_index + 1),
+                    _field(f"value_{parameter_index}", group[2], group_index + 2),
+                ]
+            )
+        rows.append(
+            {
+                "line": block.line_number + local_index,
+                "line_index_in_block": local_index,
+                "raw": line,
+                "fields": fields,
+            }
+        )
+    return rows
+
+
+def _parse_parameter_expression_block(block: KeywordBlock) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for local_index, line in enumerate(block.lines[1:], start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("$"):
+            continue
+        parts = stripped.split(maxsplit=1)
+        first = parts[0]
+        expression = parts[1] if len(parts) > 1 else ""
+        if len(first) >= 2 and first[0].isalpha():
+            parameter_type = first[0]
+            name = first[1:]
+        else:
+            parameter_type = ""
+            name = first
+        fields = [
+            _field("type", parameter_type, 0),
+            _field("name", name, 1),
+            _field("expression", expression, 2),
+        ]
+        rows.append(
+            {
+                "line": block.line_number + local_index,
+                "line_index_in_block": local_index,
+                "raw": line,
+                "fields": fields,
+            }
+        )
+    return rows
+
+
+def _parse_generic_block(block: KeywordBlock) -> tuple[list[dict[str, Any]], str]:
+    schema = _schema_for(block.keyword)
+    rows: list[dict[str, Any]] = []
+    active_labels: list[str] = []
+    data_row_index = 0
+    for local_index, line in enumerate(block.lines[1:], start=1):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("$"):
+            labels = _comment_labels(line)
+            if labels:
+                active_labels = labels
+            continue
+        names = schema[data_row_index] if schema and data_row_index < len(schema) else active_labels
+        values = _split_data_values(line, len(names) if names else None)
+        if not values:
+            continue
+        fields = [
+            _field(names[index] if index < len(names) else f"field_{index + 1}", value, index)
+            for index, value in enumerate(values)
+        ]
+        rows.append(
+            {
+                "line": block.line_number + local_index,
+                "line_index_in_block": local_index,
+                "raw": line,
+                "fields": fields,
+            }
+        )
+        data_row_index += 1
+    source = "schema" if schema else "comment_labels" if any(row["fields"] for row in rows) else "raw"
+    return rows, source
+
+
+def _parse_field_block(block: KeywordBlock) -> dict[str, Any]:
+    if block.keyword == "*PARAMETER":
+        rows = _parse_parameter_block(block)
+        source = "schema"
+    elif block.keyword.startswith("*PARAMETER_EXPRESSION"):
+        rows = _parse_parameter_expression_block(block)
+        source = "schema"
+    else:
+        rows, source = _parse_generic_block(block)
+    return {
+        "keyword": block.keyword,
+        "base_keyword": _base_keyword(block.keyword),
+        "file": str(block.file_path),
+        "line": block.line_number,
+        "schema_source": source,
+        "rows": rows,
+    }
+
+
+def _parameter_summary(field_blocks: list[dict[str, Any]]) -> dict[str, Any]:
+    definitions: dict[str, Any] = {}
+    expressions: dict[str, Any] = {}
+    references: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for field_block in field_blocks:
+        keyword = field_block["keyword"]
+        if keyword == "*PARAMETER":
+            for row in field_block["rows"]:
+                fields = row["fields"]
+                by_name = {field["name"]: field["value"] for field in fields}
+                parameter_count = len(fields) // 3
+                for index in range(1, parameter_count + 1):
+                    name = by_name.get(f"name_{index}", "")
+                    if not name:
+                        continue
+                    definitions[name.lower()] = {
+                        "name": name,
+                        "type": by_name.get(f"type_{index}", ""),
+                        "value": by_name.get(f"value_{index}", ""),
+                        "file": field_block["file"],
+                        "line": row["line"],
+                    }
+        elif keyword.startswith("*PARAMETER_EXPRESSION"):
+            for row in field_block["rows"]:
+                by_name = {field["name"]: field for field in row["fields"]}
+                name = by_name.get("name", {}).get("value", "")
+                if not name:
+                    continue
+                expression = by_name.get("expression", {}).get("value", "")
+                refs = [
+                    token
+                    for token in re.findall(r"\b[A-Za-z][A-Za-z0-9_]*\b", expression)
+                    if token.lower() not in {"r", "i", "c"}
+                ]
+                expressions[name.lower()] = {
+                    "name": name,
+                    "type": by_name.get("type", {}).get("value", ""),
+                    "expression": expression,
+                    "dependencies": sorted({ref for ref in refs if ref.lower() != name.lower()}),
+                    "normalized_dependencies": sorted(
+                        {ref.lower() for ref in refs if ref.lower() != name.lower()}
+                    ),
+                    "file": field_block["file"],
+                    "line": row["line"],
+                }
+        for row in field_block["rows"]:
+            for field in row["fields"]:
+                for ref in field.get("references", []):
+                    references[ref.lower()].append(
+                        {
+                            "name": ref,
+                            "file": field_block["file"],
+                            "keyword": keyword,
+                            "block_line": field_block["line"],
+                            "line": row["line"],
+                            "field": field["name"],
+                            "value": field["value"],
+                        }
+                    )
+    return {
+        "definitions": dict(sorted(definitions.items())),
+        "expressions": dict(sorted(expressions.items())),
+        "references": {key: value for key, value in sorted(references.items())},
+    }
 
 
 def _collect_deck(
@@ -520,6 +801,83 @@ def inspect_keyword_deck(
             "database_outputs": _database_summary(blocks),
             "blast_impact": _blast_impact_summary(blocks),
             "entities": _entity_summary(blocks),
+            "includes": includes,
+        }
+    except Exception as exc:
+        result = result_from_validation_error(exc)
+        result["k_path"] = str(k_path)
+        return result
+
+
+def inspect_keyword_fields(
+    k_path: str,
+    extra_k_paths: list[str] | None = None,
+    include_includes: bool = True,
+    max_depth: int = 4,
+    keyword_filter: list[str] | None = None,
+    include_unknown: bool = False,
+    max_blocks: int = 200,
+    config: LsppConfig | None = None,
+) -> dict[str, Any]:
+    cfg = get_config(config)
+    try:
+        depth = positive_int(max_depth, "max_depth")
+        limit = positive_int(max_blocks, "max_blocks")
+        path = ensure_input_file(
+            k_path,
+            cfg.workspace_root,
+            cfg.resolved_allowed_roots(),
+            label="keyword file",
+        )
+        paths = [path]
+        for extra_path in extra_k_paths or []:
+            paths.append(
+                ensure_input_file(
+                    extra_path,
+                    cfg.workspace_root,
+                    cfg.resolved_allowed_roots(),
+                    label="extra keyword file",
+                )
+            )
+        blocks: list[KeywordBlock] = []
+        includes: list[dict[str, Any]] = []
+        file_line_counts: dict[str, int] = {}
+        for deck_path in paths:
+            deck_blocks, deck_includes, _warnings, deck_line_counts = _collect_deck(
+                deck_path, cfg.resolved_allowed_roots(), include_includes, depth
+            )
+            blocks.extend(deck_blocks)
+            includes.extend(deck_includes)
+            file_line_counts.update(deck_line_counts)
+
+        filters = {item.upper() for item in keyword_filter or []}
+        field_blocks: list[dict[str, Any]] = []
+        for block in blocks:
+            if filters and block.keyword not in filters and _base_keyword(block.keyword) not in filters:
+                continue
+            parsed = _parse_field_block(block)
+            has_schema = parsed["schema_source"] == "schema"
+            has_fields = any(row["fields"] for row in parsed["rows"])
+            if has_schema or include_unknown or filters or has_fields:
+                field_blocks.append(parsed)
+            if len(field_blocks) >= limit:
+                break
+
+        return {
+            "ok": True,
+            "message": "Keyword fields parsed successfully.",
+            "k_path": str(path),
+            "extra_k_paths": [str(item) for item in paths[1:]],
+            "include_includes": include_includes,
+            "files": [
+                {"path": file_path, "line_count": line_count}
+                for file_path, line_count in sorted(file_line_counts.items())
+            ],
+            "keyword_filter": sorted(filters),
+            "truncated": len(field_blocks) >= limit,
+            "field_block_count": len(field_blocks),
+            "field_blocks": field_blocks,
+            "parameter_summary": _parameter_summary(field_blocks),
             "includes": includes,
         }
     except Exception as exc:

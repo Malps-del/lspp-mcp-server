@@ -8,7 +8,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from lspp_mcp.config import LsppConfig  # noqa: E402
-from lspp_mcp.tools.keyword import check_keyword_deck, inspect_keyword_deck  # noqa: E402
+from lspp_mcp.tools.keyword import (  # noqa: E402
+    check_keyword_deck,
+    inspect_keyword_deck,
+    inspect_keyword_fields,
+)
 from lspp_mcp.variable_maps import default_variable_maps  # noqa: E402
 
 
@@ -143,6 +147,61 @@ class KeywordToolTests(unittest.TestCase):
                 result["blast_impact"]["keywords"]["*MAT_HIGH_EXPLOSIVE_BURN_TITLE"],
                 1,
             )
+
+    def test_inspect_keyword_fields_parses_parameters_and_references(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "main.k").write_text(
+                "\n".join(
+                    [
+                        "*KEYWORD",
+                        "*PARAMETER",
+                        "$#   prmr1      val1     prmr2      val2     prmr3      val3",
+                        "R expDp   2.5       R soil    2         R air     3",
+                        "*PARAMETER_EXPRESSION_LOCAL",
+                        "$#    prmr                                                            expression",
+                        "Rpexp1    soil-0.1",
+                        "*CONTROL_TERMINATION",
+                        "$#  endtim    endcyc     dtmin    endeng    endmas     nosol",
+                        "      0.05         0       0.0       0.01.000000E8         0",
+                        "*DATABASE_TRACER",
+                        "$#    time     track         x         y         z    ammgid       nid    radius",
+                        "       0.0         1       0.5&expdp           0.0         0         0       0.0",
+                        "*INITIAL_DETONATION",
+                        "$#     pid         x         y         z        lt         -    mmgset",
+                        "       101       0.0       2.0       0.0&expdp           0.0",
+                        "*END",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = inspect_keyword_fields("main.k", config=self._config(root))
+
+            self.assertTrue(result["ok"])
+            summary = result["parameter_summary"]
+            self.assertEqual(summary["definitions"]["expdp"]["value"], "2.5")
+            self.assertEqual(summary["definitions"]["soil"]["value"], "2")
+            self.assertEqual(summary["expressions"]["pexp1"]["expression"], "soil-0.1")
+            self.assertEqual(summary["expressions"]["pexp1"]["dependencies"], ["soil"])
+            self.assertEqual(
+                summary["references"]["expdp"][0]["keyword"],
+                "*DATABASE_TRACER",
+            )
+            self.assertEqual(summary["references"]["expdp"][0]["field"], "x")
+
+            termination = next(
+                block
+                for block in result["field_blocks"]
+                if block["keyword"] == "*CONTROL_TERMINATION"
+            )
+            fields = {
+                field["name"]: field["value"]
+                for row in termination["rows"]
+                for field in row["fields"]
+            }
+            self.assertEqual(fields["endtim"], "0.05")
+            self.assertEqual(fields["endmas"], "1.000000E8")
 
 
 if __name__ == "__main__":
