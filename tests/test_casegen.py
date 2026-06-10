@@ -12,6 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lspp_mcp.config import LsppConfig  # noqa: E402
 from lspp_mcp.tools.casegen import (  # noqa: E402
     generate_lsdyna_cases,
+    generate_lsdyna_keyword_field_sweep,
+    generate_lsdyna_parameter_sweep,
     validate_case_generator_integration,
 )
 from lspp_mcp.variable_maps import default_variable_maps  # noqa: E402
@@ -173,15 +175,50 @@ def _fake_casegen_package(src: Path) -> None:
         from dataclasses import dataclass
         from pathlib import Path
         @dataclass
+        class ParsedLine:
+            raw_text: str
+            line_index_in_block: int
+            line_number_in_file: int
+            tokens: list
+            field_names: list
+        @dataclass
+        class Block:
+            keyword: str
+            instance_index: int
+            start_line: int
+            end_line: int
+            parsed_lines: list
+        @dataclass
         class Document:
             path: str
             lines: list[str]
+            blocks: list
             def keyword_summary(self):
-                return {"*KEYWORD": 1}
+                return {block.keyword: 1 for block in self.blocks}
         class KFileParser:
             def parse(self, path):
                 lines = Path(path).read_text(encoding="utf-8").splitlines()
-                return Document(str(path), lines)
+                blocks = []
+                current = None
+                counts = {}
+                for index, line in enumerate(lines):
+                    stripped = line.strip()
+                    if not stripped.startswith("*"):
+                        continue
+                    if current is not None:
+                        current.end_line = index
+                    keyword = stripped.split()[0].upper()
+                    instance = counts.get(keyword, 0)
+                    counts[keyword] = instance + 1
+                    current = Block(keyword, instance, index + 1, len(lines), [])
+                    blocks.append(current)
+                for block in blocks:
+                    for zero_index in range(block.start_line, block.end_line):
+                        raw = lines[zero_index]
+                        stripped = raw.strip()
+                        tokens = [] if (not stripped or stripped.startswith("$") or stripped.startswith("*")) else raw.replace(",", " ").split()
+                        block.parsed_lines.append(ParsedLine(raw, zero_index + 1 - block.start_line, zero_index + 1, tokens, []))
+                return Document(str(path), lines, blocks)
         """,
     )
     _write(
@@ -235,6 +272,7 @@ def _fake_casegen_package(src: Path) -> None:
         root / "services" / "export_service.py",
         """
         from pathlib import Path
+        import shutil
         class FakeIndex:
             def __init__(self, records): self.records = records
             def to_dict(self, orient="records"): return list(self.records)
@@ -246,10 +284,26 @@ def _fake_casegen_package(src: Path) -> None:
                 out.mkdir(parents=True, exist_ok=True)
                 records = []
                 for case in cases:
+                    folder = out
+                    folder_name = case.case_name(config.folder_template)
+                    if config.output_mode.value == "separate_folders":
+                        folder = out / folder_name
+                        folder.mkdir(parents=True, exist_ok=True)
+                        for support in config.copy_support_files:
+                            src = Path(support)
+                            dst = folder / src.name
+                            if src.is_dir(): shutil.copytree(src, dst)
+                            else: shutil.copy2(src, dst)
                     name = config.file_template.format(case_name=case.case_name(config.folder_template), case_id=case.case_id, **case.values)
                     if not name.endswith(".k"): name += ".k"
-                    path = out / name
-                    path.write_text("\\n".join(document.lines) + "\\n", encoding="utf-8")
+                    path = folder / name
+                    lines = list(document.lines)
+                    for parameter in parameters:
+                        line_index = parameter.file_line_number - 1
+                        tokens = lines[line_index].replace(",", " ").split()
+                        tokens[parameter.field_index] = str(case.values[parameter.alias])
+                        lines[line_index] = " ".join(tokens)
+                    path.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
                     records.append({"case_id": case.case_id, "output_path": str(path), **case.values})
                 (out / "case_index.csv").write_text("case_id,output_path\\n", encoding="utf-8")
                 return FakeIndex(records)
@@ -333,6 +387,93 @@ class CaseGeneratorIntegrationTests(unittest.TestCase):
             self.assertTrue((output_dir / "case_index.csv").exists())
             self.assertEqual(len(list(output_dir.glob("*.k"))), 2)
             self.assertTrue(Path(result["generated_request"]).exists())
+
+    def test_generate_lsdyna_parameter_sweep_builds_targets_without_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fake_src = root / "fake_src"
+            _fake_casegen_package(fake_src)
+            k_file = root / "00main.k"
+            include_file = root / "00materials.k"
+            include_file.write_text("*MAT\n", encoding="utf-8")
+            k_file.write_text(
+                textwrap.dedent(
+                    """
+                    *KEYWORD
+                    *PARAMETER
+                    R expDp 2.5 R soil 2
+                    *INCLUDE
+                    00materials.k
+                    *END
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+            output_dir = root / "sweep_cases"
+
+            result = generate_lsdyna_parameter_sweep(
+                k_path=str(k_file),
+                parameter_name="expDp",
+                output_dir=str(output_dir),
+                start=2.1,
+                end=2.2,
+                step=0.1,
+                config=self._config(root, fake_src),
+            )
+
+            self.assertTrue(result["ok"], result["message"])
+            self.assertEqual(result["generated_count"], 2)
+            case_files = sorted(
+                path for path in output_dir.glob("case_*/*.k") if path.name.startswith("case_")
+            )
+            self.assertEqual(len(case_files), 2)
+            self.assertIn("R expDp 2.1 R soil 2", case_files[0].read_text(encoding="utf-8"))
+            self.assertIn("R expDp 2.2 R soil 2", case_files[1].read_text(encoding="utf-8"))
+            self.assertTrue((case_files[0].parent / "00materials.k").exists())
+            self.assertTrue((output_dir / "case_index.csv").exists())
+            self.assertEqual(result["value_count"], 2)
+
+    def test_generate_lsdyna_keyword_field_sweep_modifies_plain_keyword_field(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fake_src = root / "fake_src"
+            _fake_casegen_package(fake_src)
+            k_file = root / "main.k"
+            k_file.write_text(
+                textwrap.dedent(
+                    """
+                    *KEYWORD
+                    *CONTROL_TERMINATION
+                    $ endtim endcyc dtmin endeng endmas
+                    0.5 0 0 0 0
+                    *END
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+            output_dir = root / "termination_cases"
+
+            result = generate_lsdyna_keyword_field_sweep(
+                k_path=str(k_file),
+                output_dir=str(output_dir),
+                keyword="*CONTROL_TERMINATION",
+                keyword_instance=1,
+                line_number_in_block=2,
+                field_number=1,
+                alias="endtim",
+                values=[1.0, 2.0],
+                config=self._config(root, fake_src),
+            )
+
+            self.assertTrue(result["ok"], result["message"])
+            self.assertEqual(result["generated_count"], 2)
+            self.assertEqual(result["target"]["keyword"], "*CONTROL_TERMINATION")
+            case_files = sorted(output_dir.glob("case_*/*.k"))
+            self.assertEqual(len(case_files), 2)
+            self.assertIn("1.0 0 0 0 0", case_files[0].read_text(encoding="utf-8"))
+            self.assertIn("2.0 0 0 0 0", case_files[1].read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

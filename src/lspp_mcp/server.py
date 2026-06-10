@@ -10,6 +10,8 @@ from .tools.batch import batch_postprocess_cases as _batch_postprocess_cases
 from .tools.binout import extract_binout_curve as _extract_binout_curve
 from .tools.casegen import (
     generate_lsdyna_cases as _generate_lsdyna_cases,
+    generate_lsdyna_keyword_field_sweep as _generate_lsdyna_keyword_field_sweep,
+    generate_lsdyna_parameter_sweep as _generate_lsdyna_parameter_sweep,
     inspect_lsdyna_case_config as _inspect_lsdyna_case_config,
     validate_case_generator_integration as _validate_case_generator_integration,
 )
@@ -21,6 +23,7 @@ from .tools.d3plot import (
 from .tools.keyword import (
     check_keyword_deck as _check_keyword_deck,
     inspect_keyword_deck as _inspect_keyword_deck,
+    inspect_keyword_fields as _inspect_keyword_fields,
 )
 from .tools.solver import (
     diagnose_lsdyna_logs as _diagnose_lsdyna_logs,
@@ -254,6 +257,106 @@ def generate_lsdyna_cases(
     )
 
 
+def generate_lsdyna_parameter_sweep(
+    k_path: str,
+    parameter_name: str,
+    output_dir: str,
+    values: list[int | float | str] | None = None,
+    start: int | float | str | None = None,
+    end: int | float | str | None = None,
+    step: int | float | str | None = None,
+    data_type: str | None = None,
+    output_mode: str = "separate_folders",
+    folder_template: str | None = None,
+    file_template: str = "{case_name}.k",
+    include_index_csv: bool = True,
+    include_index_excel: bool = False,
+    copy_include_files: bool = True,
+    copy_support_files: list[str] | None = None,
+    preview_only: bool = False,
+    preview_limit: int = 5,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _generate_lsdyna_parameter_sweep(
+        k_path=k_path,
+        parameter_name=parameter_name,
+        output_dir=output_dir,
+        values=values,
+        start=start,
+        end=end,
+        step=step,
+        data_type=data_type,
+        output_mode=output_mode,
+        folder_template=folder_template,
+        file_template=file_template,
+        include_index_csv=include_index_csv,
+        include_index_excel=include_index_excel,
+        copy_include_files=copy_include_files,
+        copy_support_files=copy_support_files,
+        preview_only=preview_only,
+        preview_limit=preview_limit,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
+def generate_lsdyna_keyword_field_sweep(
+    k_path: str,
+    output_dir: str,
+    values: list[int | float | str] | None = None,
+    start: int | float | str | None = None,
+    end: int | float | str | None = None,
+    step: int | float | str | None = None,
+    alias: str | None = None,
+    keyword: str | None = None,
+    keyword_instance: int = 1,
+    line_number_in_block: int | None = None,
+    file_line_number: int | None = None,
+    field_number: int | None = None,
+    field_name: str | None = None,
+    current_value: str | None = None,
+    data_type: str | None = None,
+    output_mode: str = "separate_folders",
+    folder_template: str | None = None,
+    file_template: str = "{case_name}.k",
+    include_index_csv: bool = True,
+    include_index_excel: bool = False,
+    copy_include_files: bool = True,
+    copy_support_files: list[str] | None = None,
+    preview_only: bool = False,
+    preview_limit: int = 5,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _generate_lsdyna_keyword_field_sweep(
+        k_path=k_path,
+        output_dir=output_dir,
+        values=values,
+        start=start,
+        end=end,
+        step=step,
+        alias=alias,
+        keyword=keyword,
+        keyword_instance=keyword_instance,
+        line_number_in_block=line_number_in_block,
+        file_line_number=file_line_number,
+        field_number=field_number,
+        field_name=field_name,
+        current_value=current_value,
+        data_type=data_type,
+        output_mode=output_mode,
+        folder_template=folder_template,
+        file_template=file_template,
+        include_index_csv=include_index_csv,
+        include_index_excel=include_index_excel,
+        copy_include_files=copy_include_files,
+        copy_support_files=copy_support_files,
+        preview_only=preview_only,
+        preview_limit=preview_limit,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
 def validate_lsdyna_solver(
     solver_exe: str | None = None,
     work_dir: str | None = None,
@@ -320,6 +423,27 @@ def inspect_keyword_deck(
     )
 
 
+def inspect_keyword_fields(
+    k_path: str,
+    extra_k_paths: list[str] | None = None,
+    include_includes: bool = True,
+    max_depth: int = 4,
+    keyword_filter: list[str] | None = None,
+    include_unknown: bool = False,
+    max_blocks: int = 200,
+) -> dict[str, Any]:
+    return _inspect_keyword_fields(
+        k_path=k_path,
+        extra_k_paths=extra_k_paths,
+        include_includes=include_includes,
+        max_depth=max_depth,
+        keyword_filter=keyword_filter,
+        include_unknown=include_unknown,
+        max_blocks=max_blocks,
+        config=load_config(),
+    )
+
+
 def check_keyword_deck(
     k_path: str,
     extra_k_paths: list[str] | None = None,
@@ -348,10 +472,13 @@ if FastMCP is not None:
     mcp.tool()(validate_case_generator_integration)
     mcp.tool()(inspect_lsdyna_case_config)
     mcp.tool()(generate_lsdyna_cases)
+    mcp.tool()(generate_lsdyna_parameter_sweep)
+    mcp.tool()(generate_lsdyna_keyword_field_sweep)
     mcp.tool()(validate_lsdyna_solver)
     mcp.tool()(run_lsdyna_solver)
     mcp.tool()(diagnose_lsdyna_logs)
     mcp.tool()(inspect_keyword_deck)
+    mcp.tool()(inspect_keyword_fields)
     mcp.tool()(check_keyword_deck)
 else:
     mcp = None

@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +44,69 @@ def _read_project_config(config_path: Path) -> dict[str, Any]:
     return data
 
 
+def _format_value_for_name(value: Any) -> str:
+    text = str(value).strip()
+    return (
+        text.replace("-", "m")
+        .replace("+", "p")
+        .replace(".", "p")
+        .replace(" ", "_")
+    )
+
+
+def _validate_case_alias(alias: str) -> str:
+    text = alias.strip()
+    if not text:
+        raise LsppValidationError("alias cannot be empty")
+    if any(char in text for char in ['"', "'", "\r", "\n", " ", ",", "{", "}"]):
+        raise LsppValidationError(
+            "alias must be a single template-safe name without spaces or braces"
+        )
+    return text
+
+
+def _coerce_sweep_value(value: Decimal) -> int | float:
+    if value == value.to_integral_value():
+        return int(value)
+    return float(value)
+
+
+def _build_sweep_values(
+    values: list[int | float | str] | None,
+    start: int | float | str | None,
+    end: int | float | str | None,
+    step: int | float | str | None,
+) -> list[int | float | str]:
+    if values is not None:
+        if not values:
+            raise LsppValidationError("values cannot be empty")
+        return list(values)
+    if start is None or end is None or step is None:
+        raise LsppValidationError("Either values or start/end/step is required")
+    try:
+        current = Decimal(str(start))
+        stop = Decimal(str(end))
+        increment = Decimal(str(step))
+    except InvalidOperation as exc:
+        raise LsppValidationError("start/end/step must be numeric") from exc
+    if increment == 0:
+        raise LsppValidationError("step cannot be zero")
+    if (stop - current) * increment < 0:
+        raise LsppValidationError("step sign does not move from start toward end")
+
+    sweep_values: list[int | float] = []
+    guard = 0
+    while (increment > 0 and current <= stop) or (increment < 0 and current >= stop):
+        sweep_values.append(_coerce_sweep_value(current))
+        current += increment
+        guard += 1
+        if guard > 10000:
+            raise LsppValidationError("Too many sweep values; limit is 10000")
+    if not sweep_values:
+        raise LsppValidationError("No sweep values were generated")
+    return sweep_values
+
+
 def _resolve_optional_path(value: str | None, base_dir: Path) -> Path | None:
     if not value:
         return None
@@ -50,6 +114,38 @@ def _resolve_optional_path(value: str | None, base_dir: Path) -> Path | None:
     if not path.is_absolute():
         path = base_dir / path
     return path.resolve(strict=False)
+
+
+def _auto_include_files(k_path: Path, cfg: LsppConfig) -> list[str]:
+    allowed_roots = cfg.resolved_allowed_roots()
+    lines = k_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    include_paths: list[str] = []
+    for index, raw_line in enumerate(lines):
+        keyword = raw_line.strip().upper()
+        if keyword != "*INCLUDE":
+            continue
+        for candidate_line in lines[index + 1 :]:
+            stripped = candidate_line.strip()
+            if not stripped or stripped.startswith("$"):
+                continue
+            if stripped.startswith("*"):
+                break
+            raw_path = stripped.split(",", 1)[0].strip().strip('"').strip("'")
+            if not raw_path:
+                break
+            include_path = _resolve_optional_path(raw_path, k_path.parent)
+            if include_path is None:
+                break
+            resolved = ensure_within_allowed_roots(
+                include_path,
+                cfg.workspace_root,
+                allowed_roots,
+            )
+            if not resolved.exists():
+                raise LsppValidationError(f"Included file does not exist: {resolved}")
+            include_paths.append(str(resolved))
+            break
+    return include_paths
 
 
 def _validate_project_config_paths(
@@ -313,4 +409,275 @@ def generate_lsdyna_cases(
     except Exception as exc:
         result = result_from_validation_error(exc)
         result["project_config_path"] = str(project_config_path)
+        return result
+
+
+def generate_lsdyna_parameter_sweep(
+    k_path: str,
+    parameter_name: str,
+    output_dir: str,
+    values: list[int | float | str] | None = None,
+    start: int | float | str | None = None,
+    end: int | float | str | None = None,
+    step: int | float | str | None = None,
+    data_type: str | None = None,
+    output_mode: str = "separate_folders",
+    folder_template: str | None = None,
+    file_template: str = "{case_name}.k",
+    include_index_csv: bool = True,
+    include_index_excel: bool = False,
+    copy_include_files: bool = True,
+    copy_support_files: list[str] | None = None,
+    preview_only: bool = False,
+    preview_limit: int = 5,
+    overwrite: bool = False,
+    config: LsppConfig | None = None,
+    timeout: int | None = None,
+) -> dict[str, Any]:
+    cfg = get_config(config)
+    try:
+        source = ensure_input_file(
+            k_path,
+            cfg.workspace_root,
+            cfg.resolved_allowed_roots(),
+            label="k_path",
+        )
+        parameter_name = parameter_name.strip().lstrip("&")
+        if not parameter_name or any(
+            char in parameter_name for char in ['"', "'", "\r", "\n", " ", ","]
+        ):
+            raise LsppValidationError("parameter_name must be a single LS-DYNA parameter name")
+        if output_mode not in {"flat", "separate_folders"}:
+            raise LsppValidationError("output_mode must be flat or separate_folders")
+        if data_type is not None and data_type not in {"int", "integer", "i", "float", "r"}:
+            raise LsppValidationError("data_type must be int/integer/i or float/r")
+
+        sweep_values = _build_sweep_values(values, start, end, step)
+        limit = positive_int(preview_limit, "preview_limit")
+        if limit < 1:
+            raise LsppValidationError("preview_limit must be greater than 0")
+        destination = ensure_within_allowed_roots(
+            output_dir,
+            cfg.workspace_root,
+            cfg.resolved_allowed_roots(),
+        )
+        if not preview_only:
+            destination.mkdir(parents=True, exist_ok=True)
+            if not overwrite and any(destination.iterdir()):
+                raise LsppValidationError(
+                    f"Output directory is not empty and overwrite=false: {destination}"
+                )
+
+        support_paths: list[str] = []
+        if copy_include_files:
+            support_paths.extend(_auto_include_files(source, cfg))
+        if copy_support_files:
+            for item in copy_support_files:
+                support_path = _resolve_optional_path(str(item), source.parent)
+                if support_path is None:
+                    continue
+                resolved = ensure_within_allowed_roots(
+                    support_path,
+                    cfg.workspace_root,
+                    cfg.resolved_allowed_roots(),
+                )
+                if not resolved.exists():
+                    raise LsppValidationError(f"copy support path does not exist: {resolved}")
+                support_paths.append(str(resolved))
+
+        deduped_support_paths = list(dict.fromkeys(support_paths))
+        template = folder_template
+        if template is None:
+            template = (
+                f"case_{{case_id:03d}}_{parameter_name}_"
+                + "{"
+                + parameter_name
+                + "}"
+            )
+
+        result, _request_path, _log_path = _run_worker(
+            cfg,
+            {
+                "command": "generate_parameter_sweep",
+                "k_file_path": str(source),
+                "parameter_name": parameter_name,
+                "values": sweep_values,
+                "data_type": data_type,
+                "output": {
+                    "output_dir": str(destination),
+                    "output_mode": output_mode,
+                    "folder_template": template,
+                    "file_template": file_template,
+                    "include_index_csv": include_index_csv,
+                    "include_index_excel": include_index_excel,
+                    "copy_support_files": deduped_support_paths,
+                },
+                "preview_only": preview_only,
+                "preview_limit": limit,
+            },
+            (destination / "case_index.json") if destination else source,
+            timeout=timeout,
+        )
+        result["copied_support_files"] = deduped_support_paths
+        result["value_count"] = len(sweep_values)
+        result["value_name_preview"] = [
+            _format_value_for_name(value) for value in sweep_values[:limit]
+        ]
+        return result
+    except Exception as exc:
+        result = result_from_validation_error(exc)
+        result["k_path"] = str(k_path)
+        result["parameter_name"] = str(parameter_name)
+        return result
+
+
+def generate_lsdyna_keyword_field_sweep(
+    k_path: str,
+    output_dir: str,
+    values: list[int | float | str] | None = None,
+    start: int | float | str | None = None,
+    end: int | float | str | None = None,
+    step: int | float | str | None = None,
+    alias: str | None = None,
+    keyword: str | None = None,
+    keyword_instance: int = 1,
+    line_number_in_block: int | None = None,
+    file_line_number: int | None = None,
+    field_number: int | None = None,
+    field_name: str | None = None,
+    current_value: str | None = None,
+    data_type: str | None = None,
+    output_mode: str = "separate_folders",
+    folder_template: str | None = None,
+    file_template: str = "{case_name}.k",
+    include_index_csv: bool = True,
+    include_index_excel: bool = False,
+    copy_include_files: bool = True,
+    copy_support_files: list[str] | None = None,
+    preview_only: bool = False,
+    preview_limit: int = 5,
+    overwrite: bool = False,
+    config: LsppConfig | None = None,
+    timeout: int | None = None,
+) -> dict[str, Any]:
+    cfg = get_config(config)
+    target_label = (
+        alias
+        or field_name
+        or (f"{str(keyword).strip().lstrip('*').lower()}_field" if keyword else "field_value")
+    )
+    try:
+        source = ensure_input_file(
+            k_path,
+            cfg.workspace_root,
+            cfg.resolved_allowed_roots(),
+            label="k_path",
+        )
+        target_alias = _validate_case_alias(str(target_label))
+        if file_line_number is None and not keyword:
+            raise LsppValidationError("keyword is required when file_line_number is not provided")
+        if output_mode not in {"flat", "separate_folders"}:
+            raise LsppValidationError("output_mode must be flat or separate_folders")
+        if data_type is not None and data_type not in {"int", "integer", "i", "float", "r"}:
+            raise LsppValidationError("data_type must be int/integer/i or float/r")
+        if field_number is not None:
+            field_number = positive_int(field_number, "field_number")
+            if field_number < 1:
+                raise LsppValidationError("field_number must be 1-based and greater than 0")
+        if keyword_instance is not None:
+            keyword_instance = positive_int(keyword_instance, "keyword_instance")
+            if keyword_instance < 1:
+                raise LsppValidationError("keyword_instance must be 1-based and greater than 0")
+        if line_number_in_block is not None:
+            line_number_in_block = positive_int(line_number_in_block, "line_number_in_block")
+            if line_number_in_block < 1:
+                raise LsppValidationError(
+                    "line_number_in_block must be 1-based and greater than 0"
+                )
+        if file_line_number is not None:
+            file_line_number = positive_int(file_line_number, "file_line_number")
+            if file_line_number < 1:
+                raise LsppValidationError("file_line_number must be 1-based and greater than 0")
+
+        sweep_values = _build_sweep_values(values, start, end, step)
+        limit = positive_int(preview_limit, "preview_limit")
+        if limit < 1:
+            raise LsppValidationError("preview_limit must be greater than 0")
+        destination = ensure_within_allowed_roots(
+            output_dir,
+            cfg.workspace_root,
+            cfg.resolved_allowed_roots(),
+        )
+        if not preview_only:
+            destination.mkdir(parents=True, exist_ok=True)
+            if not overwrite and any(destination.iterdir()):
+                raise LsppValidationError(
+                    f"Output directory is not empty and overwrite=false: {destination}"
+                )
+
+        support_paths: list[str] = []
+        if copy_include_files:
+            support_paths.extend(_auto_include_files(source, cfg))
+        if copy_support_files:
+            for item in copy_support_files:
+                support_path = _resolve_optional_path(str(item), source.parent)
+                if support_path is None:
+                    continue
+                resolved = ensure_within_allowed_roots(
+                    support_path,
+                    cfg.workspace_root,
+                    cfg.resolved_allowed_roots(),
+                )
+                if not resolved.exists():
+                    raise LsppValidationError(f"copy support path does not exist: {resolved}")
+                support_paths.append(str(resolved))
+
+        deduped_support_paths = list(dict.fromkeys(support_paths))
+        template = folder_template
+        if template is None:
+            template = f"case_{{case_id:03d}}_{target_alias}_{{{target_alias}}}"
+
+        target: dict[str, Any] = {
+            "alias": target_alias,
+            "keyword": keyword,
+            "keyword_instance": keyword_instance,
+            "line_number_in_block": line_number_in_block,
+            "file_line_number": file_line_number,
+            "field_number": field_number,
+            "field_name": field_name,
+            "current_value": current_value,
+        }
+        result, _request_path, _log_path = _run_worker(
+            cfg,
+            {
+                "command": "generate_keyword_field_sweep",
+                "k_file_path": str(source),
+                "target": target,
+                "values": sweep_values,
+                "data_type": data_type,
+                "output": {
+                    "output_dir": str(destination),
+                    "output_mode": output_mode,
+                    "folder_template": template,
+                    "file_template": file_template,
+                    "include_index_csv": include_index_csv,
+                    "include_index_excel": include_index_excel,
+                    "copy_support_files": deduped_support_paths,
+                },
+                "preview_only": preview_only,
+                "preview_limit": limit,
+            },
+            (destination / "case_index.json") if destination else source,
+            timeout=timeout,
+        )
+        result["copied_support_files"] = deduped_support_paths
+        result["value_count"] = len(sweep_values)
+        result["value_name_preview"] = [
+            _format_value_for_name(value) for value in sweep_values[:limit]
+        ]
+        return result
+    except Exception as exc:
+        result = result_from_validation_error(exc)
+        result["k_path"] = str(k_path)
+        result["target_alias"] = str(target_label)
         return result
