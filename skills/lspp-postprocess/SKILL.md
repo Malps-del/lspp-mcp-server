@@ -18,7 +18,7 @@ description: Plan and execute LS-PrePost/LS-DYNA post-processing with the lspp M
    - Many states from the same d3plot/d3part: use `export_d3plot_contour_frames` when all frames share the same display settings.
    - Simple one-field sweeps from a `k` file: use `generate_lsdyna_keyword_field_sweep` when the target is a concrete keyword field, and use `generate_lsdyna_parameter_sweep` only as a convenience when the model uses `*PARAMETER`.
    - Parameterized LS-DYNA case generation from an existing Batch Case Generator JSON config: validate with `validate_case_generator_integration`, inspect with `inspect_lsdyna_case_config`, then preview/export with `generate_lsdyna_cases`.
-   - LS-DYNA solver execution: validate with `validate_lsdyna_solver`, dry-run or launch with `run_lsdyna_solver`, and inspect `d3hsp`/`messag`/`status.out` with `diagnose_lsdyna_logs`.
+   - LS-DYNA solver execution: validate with `validate_lsdyna_solver`, dry-run or launch with `run_lsdyna_solver`, and inspect `d3hsp`/`messag`/`status.out` with `diagnose_lsdyna_logs`. Use `show_console=true` when the user wants a visible LS-DYNA console for live progress and manual solver commands.
    - Keyword deck inspection: use `inspect_keyword_deck` for read-only summaries, `inspect_keyword_fields` for structured keyword fields and `&parameter` references, and `check_keyword_deck` for preprocessing/database-output checks.
 4. Run a small validation first when the request includes fragile display behavior, unfamiliar variables, unusual output formats, or toggle-like LS-PrePost commands.
 5. Always report output folder, naming convention, count of generated files, whether files are nonempty, and where `.lspp_mcp` logs/cfiles were written.
@@ -33,7 +33,7 @@ For LS-DYNA preprocessing questions, keep keyword tools read-only. Use the parse
 
 For parameterized case generation, do not reimplement the external desktop project's logic. For simple single-field sweeps, use `generate_lsdyna_keyword_field_sweep`; it can target arbitrary keyword fields by file line or keyword/line/field location and still calls the external project's parser/replacer/exporter. Use `generate_lsdyna_parameter_sweep` only as a convenience when the model uses `*PARAMETER`. For complex sampling, multiple parameters, constraints, or Excel inputs, use the saved JSON config and `generate_lsdyna_cases` so the external generator remains the source of truth.
 
-For solver execution, prefer `dry_run=true` first when the command, working directory, CPU count, memory, or extra LS-DYNA arguments are uncertain. Never invent solver executable paths; use `lsdyna_exe` from config or ask the user to configure it. Diagnose logs after every run before moving to post-processing.
+For solver execution, prefer `dry_run=true` first when the command, working directory, CPU count, memory, or extra LS-DYNA arguments are uncertain. Never invent solver executable paths; use `lsdyna_exe` from config or ask the user to configure it. Use the default background mode for unattended batches; use `show_console=true` for single runs where the user wants to watch progress or type native LS-DYNA commands such as `sw1`, `sw2`, or `stop` into the solver console. Diagnose logs after every run before moving to post-processing.
 
 Treat toggle commands carefully. Commands such as mesh-line toggles can persist across LS-PrePost sessions or flip state per frame. Probe one or two frames before batching, and avoid leaving unstable toggle logic in the MCP server unless the command is deterministic.
 

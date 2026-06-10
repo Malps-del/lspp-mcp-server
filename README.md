@@ -364,7 +364,7 @@ run.json
 
 ### run_lsdyna_solver
 
-从指定 `k` 文件启动一次 LS-DYNA 求解。支持工作目录、CPU 数、memory、额外参数、超时时间和 dry run。
+从指定 `k` 文件启动一次 LS-DYNA 求解。支持工作目录、CPU 数、memory、额外参数、超时时间、dry run，以及可见控制台模式。
 
 ### diagnose_lsdyna_logs
 

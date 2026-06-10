@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Sequence
@@ -47,6 +48,8 @@ class SolverRunResult:
     stdout: str
     stderr: str
     timed_out: bool = False
+    process_id: int | None = None
+    still_running: bool = False
 
 
 def _solver_exe(cfg: LsppConfig, solver_exe: str | None = None) -> Path:
@@ -149,6 +152,7 @@ def run_lsdyna_solver(
     memory: str | None = None,
     additional_args: Sequence[str] | None = None,
     dry_run: bool = False,
+    show_console: bool = False,
     solver_exe: str | None = None,
     timeout: int | None = None,
     config: LsppConfig | None = None,
@@ -171,29 +175,67 @@ def run_lsdyna_solver(
                 "command": command,
                 "work_dir": str(cwd),
                 "k_path": str(keyword),
+                "show_console": show_console,
             }
 
         run_dir = create_run_dir(cwd / "lsdyna_run.json", "run_lsdyna_solver")
         log_file = run_dir / "run.json"
         try:
-            completed = subprocess.run(
-                command,
-                cwd=str(cwd),
-                text=True,
-                capture_output=True,
-                timeout=timeout or cfg.timeout_seconds,
-                check=False,
-            )
-            run_result = SolverRunResult(
-                ok=completed.returncode == 0,
-                message="LS-DYNA completed successfully."
-                if completed.returncode == 0
-                else f"LS-DYNA failed with return code {completed.returncode}.",
-                command=command,
-                returncode=completed.returncode,
-                stdout=completed.stdout,
-                stderr=completed.stderr,
-            )
+            if show_console:
+                if sys.platform != "win32":
+                    raise LsppValidationError("show_console is only supported on Windows")
+                process = subprocess.Popen(
+                    command,
+                    cwd=str(cwd),
+                    creationflags=subprocess.CREATE_NEW_CONSOLE,
+                )
+                try:
+                    returncode = process.wait(timeout=timeout or cfg.timeout_seconds)
+                    run_result = SolverRunResult(
+                        ok=returncode == 0,
+                        message="LS-DYNA completed successfully."
+                        if returncode == 0
+                        else f"LS-DYNA failed with return code {returncode}.",
+                        command=command,
+                        returncode=returncode,
+                        stdout="",
+                        stderr="",
+                        process_id=process.pid,
+                    )
+                except subprocess.TimeoutExpired:
+                    run_result = SolverRunResult(
+                        ok=False,
+                        message=(
+                            f"LS-DYNA is still running in a visible console after "
+                            f"{timeout or cfg.timeout_seconds} seconds."
+                        ),
+                        command=command,
+                        returncode=None,
+                        stdout="",
+                        stderr="",
+                        timed_out=True,
+                        process_id=process.pid,
+                        still_running=True,
+                    )
+            else:
+                completed = subprocess.run(
+                    command,
+                    cwd=str(cwd),
+                    text=True,
+                    capture_output=True,
+                    timeout=timeout or cfg.timeout_seconds,
+                    check=False,
+                )
+                run_result = SolverRunResult(
+                    ok=completed.returncode == 0,
+                    message="LS-DYNA completed successfully."
+                    if completed.returncode == 0
+                    else f"LS-DYNA failed with return code {completed.returncode}.",
+                    command=command,
+                    returncode=completed.returncode,
+                    stdout=completed.stdout,
+                    stderr=completed.stderr,
+                )
         except subprocess.TimeoutExpired as exc:
             run_result = SolverRunResult(
                 ok=False,
@@ -227,6 +269,9 @@ def run_lsdyna_solver(
             "k_path": str(keyword),
             "returncode": run_result.returncode,
             "timed_out": run_result.timed_out,
+            "show_console": show_console,
+            "process_id": run_result.process_id,
+            "still_running": run_result.still_running,
             "diagnostics": diagnostics,
             "log_file": str(log_file),
         }

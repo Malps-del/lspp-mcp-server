@@ -78,8 +78,11 @@ Use `run_lsdyna_solver` to launch a solve from a `k` file. Recommended mapping:
 - "先看命令" or uncertain arguments -> `dry_run=true`
 - "用 16 核" -> `ncpu=16`
 - "memory 200m" -> `memory="200m"`
+- "显示终端", "实时看进度", or "需要输入 sw1/sw2/stop" -> `show_console=true`
 - Extra LS-DYNA key/value options -> `additional_args=["key=value"]` only when they are explicit and safe
 - If no work directory is specified, use the `k` file parent directory
+
+The default background mode captures output and waits for completion or timeout. `show_console=true` opens a Windows console for the solver and is the right choice when the user wants LS-DYNA's native interactive commands.
 
 After `run_lsdyna_solver`, inspect the returned `diagnostics`. If `completion_state` is not `normal_termination`, report the most important findings before doing post-processing.
 

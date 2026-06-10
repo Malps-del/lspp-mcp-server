@@ -375,6 +375,7 @@ def run_lsdyna_solver(
     memory: str | None = None,
     additional_args: list[str] | None = None,
     dry_run: bool = False,
+    show_console: bool = False,
     solver_exe: str | None = None,
     timeout: int | None = None,
 ) -> dict[str, Any]:
@@ -385,6 +386,7 @@ def run_lsdyna_solver(
         memory=memory,
         additional_args=additional_args,
         dry_run=dry_run,
+        show_console=show_console,
         solver_exe=solver_exe,
         timeout=timeout,
         config=load_config(),
