@@ -62,6 +62,34 @@ class TemplateTests(unittest.TestCase):
         )
         self.assertIn('print vrml "D:/case/post/out.wrl" opaque enlisted "OGL1x1"', rendered)
 
+    def test_d3plot_frames_template_renders_state_print_commands(self) -> None:
+        rendered = render_template(
+            "export_d3plot_contour_frames.cfile.j2",
+            {
+                "open_command": "openc",
+                "d3plot_path": "D:/case/d3part",
+                "fringe_code": 7,
+                "view_command": "isometric x",
+                "part_command": "pall",
+                "show_legend": 1,
+                "show_triad": 0,
+                "background_rgb": "1 1 1",
+                "title_command": "title 0",
+                "range_level_commands": "range level 50\nrange pal update",
+                "image_format": "png",
+                "print_format": "png",
+                "frame_print_commands": (
+                    'state 1\nac\nprint png "D:/case/post/s001.png" opaque enlisted "OGL1x1"\n'
+                    'state 2\nac\nprint png "D:/case/post/s002.png" opaque enlisted "OGL1x1"'
+                ),
+            },
+        )
+        self.assertEqual(rendered.count('openc d3plot "D:/case/d3part"'), 1)
+        self.assertIn("state 1", rendered)
+        self.assertIn("state 2", rendered)
+        self.assertIn("range level 50", rendered)
+        self.assertTrue(rendered.rstrip().endswith("exit"))
+
     def test_ascii_template_renders_nodout(self) -> None:
         rendered = render_template(
             "extract_ascii_curve.cfile.j2",

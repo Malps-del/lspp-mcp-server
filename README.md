@@ -81,6 +81,8 @@ workspace_root: "D:/lsdyna-projects"
 allowed_roots:
   - "D:/lsdyna-projects"
 timeout_seconds: 300
+case_generator_python: ""
+case_generator_src: ""
 ```
 
 含义：
@@ -89,6 +91,8 @@ timeout_seconds: 300
 - `workspace_root`：相对路径的默认起点。例如传入 `case01/d3part` 时，会按 `workspace_root/case01/d3part` 解析。
 - `allowed_roots`：安全白名单目录。MCP 只允许读写这些目录下面的文件。
 - `timeout_seconds`：单次 LS-PrePost 调用的超时时间。
+- `case_generator_python`：可选。已有 LS-DYNA Batch Case Generator 项目的 Python 解释器路径，通常是该项目 `.venv` 里的 `python.exe`。
+- `case_generator_src`：可选。已有 LS-DYNA Batch Case Generator 项目的 `src` 目录。
 
 如果你的仿真项目分散在多个目录，可以写多个白名单目录：
 
@@ -266,7 +270,7 @@ D:\lsdyna-projects\case01\d3part
 文件名按 von_mises_state_001.png 到 von_mises_state_010.png 命名。
 ```
 
-Codex 会连续调用 10 次 `export_d3plot_contour`，分别设置：
+Codex 会优先调用 `export_d3plot_contour_frames`，在同一个 LS-PrePost 会话中打开一次 `d3plot` 或 `d3part`，然后连续切换 state 并截图：
 
 ```text
 state_index = 1, 2, 3, ..., 10
@@ -287,17 +291,16 @@ von_mises_state_001.png
 von_mises_state_002.png
 ...
 von_mises_state_010.png
-summary.json
 ```
 
-每次 LS-PrePost 调用还会在输出目录附近生成 `.lspp_mcp` 运行记录，里面包含：
+这类多帧任务只会生成一次 `.lspp_mcp` 运行记录，里面包含：
 
 ```text
 generated.cfile
 run.json
 ```
 
-这些文件用于复核实际执行的 LS-PrePost 命令、返回码和输出文件检查结果。
+这些文件用于复核实际执行的 LS-PrePost 命令、返回码和每一帧输出文件的检查结果。少量帧或每帧设置不同的特殊任务，仍然可以使用单帧 `export_d3plot_contour`。
 
 ## MCP Tools
 
@@ -312,6 +315,10 @@ run.json
 ### export_d3plot_contour
 
 从 `d3plot` 或 `d3part` 导出指定变量、指定状态帧、指定视角的云图文件。支持 `png`、`jpg`、`bmp`、`gif`、`wrl` 输出格式，并支持 part 显示控制、图例/坐标轴显示控制、背景色、窗口尺寸和云图显示层级。
+
+### export_d3plot_contour_frames
+
+从同一个 `d3plot` 或 `d3part` 连续导出多帧云图。该工具只启动一次 LS-PrePost，在同一个 cfile 中依次执行 `state` 和 `print`，适合第 1 到 30 帧、第 1 到 100 帧这类连续截图任务。支持与单帧云图导出相同的变量、视角、输出格式、part 控制、图例/坐标轴、背景色和云图显示层级。
 
 ### extract_ascii_curve
 
@@ -330,6 +337,26 @@ run.json
 ### batch_postprocess_cases
 
 对多个工况目录批量运行后处理任务，并写出 `summary.json`、`summary.csv`。适合把同一套云图导出或曲线提取流程应用到多个 case。
+
+### validate_case_generator_integration
+
+检查 MCP 是否能调用外部 LS-DYNA Batch Case Generator 项目。会验证 `case_generator_python`、`case_generator_src` 是否可用，并尝试导入其核心服务。
+
+### inspect_lsdyna_case_config
+
+读取 LS-DYNA Batch Case Generator 保存的 JSON 配置，汇总初始 `k` 文件、已选参数、约束、生成方式、输出设置和关键字概览。该工具只读，不会生成新工况。
+
+### generate_lsdyna_cases
+
+复用外部 LS-DYNA Batch Case Generator 的现有核心逻辑，从其 JSON 配置生成参数化工况。支持随机采样、LHS、Excel 输入、约束过滤、命名模板、输出索引表和附带资源复制。可以先用 `preview_only=true` 只预览工况和命名结果，再正式导出。
+
+### inspect_keyword_deck
+
+只读解析 LS-DYNA `k`/keyword 文件，汇总关键字数量、include 文件、材料、截面、part、set、数据库输出卡，以及爆炸冲击/ALE/FSI/接触/载荷等常见关键字族。该工具不会修改原始 `k` 文件。如果一个模型由多个没有互相 include 的 `k` 文件共同组成，可以通过 `extra_k_paths` 一起纳入解析。
+
+### check_keyword_deck
+
+在 `inspect_keyword_deck` 的基础上做前处理检查，例如 include 是否缺失、是否有 `*CONTROL_TERMINATION` 和 `*CONTROL_TIMESTEP`、是否配置 d3plot/d3part、glstat、matsum、extent binary 等常用输出，以及爆炸、ALE、FSI 模型中常见的后处理准备项是否缺失。需要同时检查多个独立 `k` 文件时，同样使用 `extra_k_paths`。
 
 ## 扩展模板
 

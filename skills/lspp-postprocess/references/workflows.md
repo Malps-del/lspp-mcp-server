@@ -27,19 +27,35 @@ The tool returns `output_png`, `output_image`, `image_format`, `generated_cfile`
 
 ## Multi-State Contour Images
 
-Current public MCP behavior: repeated `export_d3plot_contour` calls open LS-PrePost once per image.
+Preferred MCP behavior: use `export_d3plot_contour_frames` when all frames share the same display options. It opens LS-PrePost once, loads the d3plot/d3part once, then repeats `state` and `print` for each requested frame.
 
-Use repeated tool calls when there are only a few frames, when simplicity matters, or when each frame has different options.
+Use repeated `export_d3plot_contour` calls only when there are very few frames or each frame needs different options.
 
-Use one generated cfile when exporting many frames with the same settings:
+For `export_d3plot_contour_frames`, map requests as:
 
-1. Open the d3plot/d3part once.
-2. Set fringe, part display, legend, triad, title, background, and range settings once.
-3. For each state, write `state N`, view command, and `print <format> "<path>" opaque enlisted "OGL1x1"`.
-4. Run with `run_lsprepost` in image mode.
-5. Check every output exists and is nonempty; write a `summary.json`.
+- "第 1 到 30 帧" -> `state_start=1`, `state_end=30`
+- "第 1、5、10 帧" -> `state_indices=[1, 5, 10]`
+- "图片在该目录下新建文件夹保存" -> create/pass `output_dir`
+- "文件名按 ... 命名" -> `filename_template`
 
 Do a one-frame or two-frame probe before large runs when using mesh/outline toggles, unusual formats, or untested display commands.
+
+## Keyword Deck Inspection
+
+Use `inspect_keyword_deck` to summarize a `k` file without modifying it. It follows `*INCLUDE` cards when enabled and reports keyword counts, include files, database output cards, entity summaries, and blast/impact/ALE/FSI-related keyword families.
+
+Use `check_keyword_deck` when the user asks whether a model is ready for post-processing or solving. It checks missing includes, common control cards, d3plot/d3part/glstat/matsum/nodout/database extent availability, and common blast/ALE/FSI consistency hints.
+
+## Parameterized Case Generation
+
+When the user wants MCP/Codex to generate LS-DYNA parameterized cases from the existing desktop Batch Case Generator project:
+
+1. Use `validate_case_generator_integration` first if the current session has not already confirmed the adapter works.
+2. Use `inspect_lsdyna_case_config` on the JSON config saved by the desktop app to summarize selected parameters, constraints, sampling method, and output settings.
+3. Use `generate_lsdyna_cases` with `preview_only=true` for a dry run when output paths, constraints, or naming templates are uncertain.
+4. Use `generate_lsdyna_cases` with `preview_only=false` to export cases. Pass overrides such as `sample_count`, `random_seed`, `output_dir`, `method`, `folder_template`, and `file_template` only when the user asks to change the saved config behavior.
+
+Do not duplicate the case generator logic inside the MCP. The adapter intentionally calls the external project's `ConfigService`, `KFileParser`, `CaseGeneratorService`, `ConstraintService`, and `ExportService`.
 
 ## Curves
 

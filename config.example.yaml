@@ -7,6 +7,11 @@ allowed_roots:
 timeout_seconds: 300
 open_d3plot_command: "openc"
 
+# Optional integration with the separate LS-DYNA Batch Case Generator project.
+# Leave these empty if you do not use that project from this MCP server.
+case_generator_python: ""
+case_generator_src: ""
+
 variables:
   d3plot_fringe:
     pressure: 8

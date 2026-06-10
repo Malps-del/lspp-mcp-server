@@ -14,6 +14,7 @@ from .validators import LsppValidationError, validate_cfile_content
 TEMPLATE_DIR = Path(__file__).with_name("cfile_templates")
 ALLOWED_TEMPLATES = {
     "export_d3plot_contour.cfile.j2",
+    "export_d3plot_contour_frames.cfile.j2",
     "extract_ascii_curve.cfile.j2",
     "extract_binout_curve.cfile.j2",
     "extract_d3plot_node_history.cfile.j2",

@@ -18,7 +18,11 @@ from ..validators import (
 from ._common import get_config
 from .ascii_curves import extract_ascii_curve
 from .binout import extract_binout_curve
-from .d3plot import export_d3plot_contour, extract_d3plot_node_history
+from .d3plot import (
+    export_d3plot_contour,
+    export_d3plot_contour_frames,
+    extract_d3plot_node_history,
+)
 
 
 def _resolve_task_paths(case_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
@@ -29,6 +33,7 @@ def _resolve_task_paths(case_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
         "binout_path",
         "output_png",
         "output_csv",
+        "output_dir",
     ]:
         if key in resolved and isinstance(resolved[key], str):
             candidate = Path(resolved[key])
@@ -42,6 +47,8 @@ def _run_task(task: dict[str, Any], case_dir: Path, cfg: LsppConfig) -> dict[str
     params = _resolve_task_paths(case_dir, {k: v for k, v in task.items() if k != "type"})
     if task_type == "export_d3plot_contour":
         return export_d3plot_contour(config=cfg, **params)
+    if task_type == "export_d3plot_contour_frames":
+        return export_d3plot_contour_frames(config=cfg, **params)
     if task_type == "extract_ascii_curve":
         return extract_ascii_curve(config=cfg, **params)
     if task_type == "extract_d3plot_node_history":

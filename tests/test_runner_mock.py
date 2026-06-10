@@ -15,6 +15,7 @@ from lspp_mcp.tools.ascii_curves import extract_ascii_curve  # noqa: E402
 from lspp_mcp.tools.binout import extract_binout_curve  # noqa: E402
 from lspp_mcp.tools.d3plot import (  # noqa: E402
     export_d3plot_contour,
+    export_d3plot_contour_frames,
     extract_d3plot_node_history,
 )
 from lspp_mcp.variable_maps import default_variable_maps  # noqa: E402
@@ -115,6 +116,69 @@ class RunnerMockTests(unittest.TestCase):
             )
             self.assertFalse(result["ok"])
             self.assertIn("image_format must be one of", result["message"])
+
+    def test_export_frames_generates_one_cfile_for_many_states(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "d3plot").write_text("fake", encoding="utf-8")
+            cfg = self._config(root)
+            output_dir = root / "post" / "frames"
+
+            def fake_run(*args, **kwargs):
+                for state in range(1, 4):
+                    output = output_dir / f"von_mises_state_{state:03d}.png"
+                    output.parent.mkdir(parents=True, exist_ok=True)
+                    output.write_text("image", encoding="utf-8")
+                return RunResult(
+                    ok=True,
+                    message="ok",
+                    command=[],
+                    returncode=0,
+                    stdout="",
+                    stderr="",
+                    log_file=None,
+                )
+
+            with patch("lspp_mcp.tools._common.run_lsprepost", side_effect=fake_run):
+                result = export_d3plot_contour_frames(
+                    d3plot_path="d3plot",
+                    output_dir="post/frames",
+                    variable="von_mises",
+                    state_start=1,
+                    state_end=3,
+                    view="isometric",
+                    range_level=50,
+                    config=cfg,
+                )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["requested_count"], 3)
+            self.assertEqual(result["generated_count"], 3)
+            generated = Path(result["generated_cfile"]).read_text(encoding="utf-8")
+            self.assertEqual(generated.count('openc d3plot "'), 1)
+            self.assertIn("state 1", generated)
+            self.assertIn("state 2", generated)
+            self.assertIn("state 3", generated)
+            self.assertIn("range level 50", generated)
+            self.assertIn('print png "', generated)
+
+    def test_export_frames_rejects_duplicate_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "d3plot").write_text("fake", encoding="utf-8")
+            cfg = self._config(root)
+            result = export_d3plot_contour_frames(
+                d3plot_path="d3plot",
+                output_dir="post/frames",
+                variable="von_mises",
+                state_start=1,
+                state_end=2,
+                view="front",
+                filename_template="same.png",
+                config=cfg,
+            )
+            self.assertFalse(result["ok"])
+            self.assertIn("duplicate", result["message"])
 
     def test_empty_output_returns_not_ok(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

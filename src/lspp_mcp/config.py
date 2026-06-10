@@ -132,6 +132,8 @@ class LsppConfig:
     allowed_roots: tuple[Path, ...] = field(default_factory=tuple)
     timeout_seconds: int = 300
     open_d3plot_command: str = "openc"
+    case_generator_python: str = ""
+    case_generator_src: Path | None = None
     variable_maps: dict[str, Any] = field(default_factory=default_variable_maps)
 
     def resolved_allowed_roots(self) -> tuple[Path, ...]:
@@ -183,5 +185,9 @@ def load_config(path: str | os.PathLike[str] | None = None) -> LsppConfig:
         allowed_roots=allowed_roots,
         timeout_seconds=int(data.get("timeout_seconds", 300)),
         open_d3plot_command=str(data.get("open_d3plot_command", "openc")),
+        case_generator_python=str(data.get("case_generator_python", "")),
+        case_generator_src=_resolve_config_path(data["case_generator_src"], base_dir)
+        if data.get("case_generator_src")
+        else None,
         variable_maps=variable_maps,
     )
