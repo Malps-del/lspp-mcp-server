@@ -57,6 +57,22 @@ When the user wants MCP/Codex to generate LS-DYNA parameterized cases from the e
 
 Do not duplicate the case generator logic inside the MCP. The adapter intentionally calls the external project's `ConfigService`, `KFileParser`, `CaseGeneratorService`, `ConstraintService`, and `ExportService`.
 
+## Solver Execution
+
+Use `validate_lsdyna_solver` before the first solve in a session or after config changes. It checks `lsdyna_exe` and the work directory.
+
+Use `run_lsdyna_solver` to launch a solve from a `k` file. Recommended mapping:
+
+- "先看命令" or uncertain arguments -> `dry_run=true`
+- "用 16 核" -> `ncpu=16`
+- "memory 200m" -> `memory="200m"`
+- Extra LS-DYNA key/value options -> `additional_args=["key=value"]` only when they are explicit and safe
+- If no work directory is specified, use the `k` file parent directory
+
+After `run_lsdyna_solver`, inspect the returned `diagnostics`. If `completion_state` is not `normal_termination`, report the most important findings before doing post-processing.
+
+Use `diagnose_lsdyna_logs` when the user only wants to inspect an existing run directory or when a solve was launched outside MCP. It reads `d3hsp`, `messag`, and `status.out` when present.
+
 ## Curves
 
 Use `extract_d3plot_node_history` for d3plot node history curves when the result is not in ASCII/binout or the user asks for history from d3plot.

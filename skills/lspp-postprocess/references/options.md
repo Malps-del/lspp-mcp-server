@@ -81,3 +81,17 @@ The MCP can reuse a separate LS-DYNA Batch Case Generator project through config
 - `case_generator_src`: `src` directory for the external project.
 
 The JSON config path, `k_file_path`, Excel input, output directory, and support files must still be inside MCP `allowed_roots`. Use `overwrite=true` only when the user expects an existing output directory to be reused; the adapter does not delete existing content.
+
+## Solver Config And Logs
+
+`lsdyna_exe` is the configured LS-DYNA solver executable. Keep it blank until the user has a known local solver path.
+
+Solver execution remains bounded by `allowed_roots`: the input `k` file, work directory, and diagnostic log files must be inside the whitelist.
+
+`diagnose_lsdyna_logs` looks for common files:
+
+- `d3hsp`
+- `messag`, `messag.*`, `message`, `message.*`
+- `status.out`, `status`, `status.*`
+
+Treat log diagnosis as a heuristic summary. Always surface detected errors or warnings and the latest time/cycle, but do not claim a model is physically valid just because the solver terminated normally.

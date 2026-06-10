@@ -1,0 +1,117 @@
+from __future__ import annotations
+
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from lspp_mcp.config import LsppConfig  # noqa: E402
+from lspp_mcp.tools.solver import (  # noqa: E402
+    diagnose_lsdyna_logs,
+    run_lsdyna_solver,
+    validate_lsdyna_solver,
+)
+from lspp_mcp.variable_maps import default_variable_maps  # noqa: E402
+
+
+class SolverToolTests(unittest.TestCase):
+    def _config(self, root: Path, exe: Path | None = None) -> LsppConfig:
+        return LsppConfig(
+            lsprepost_exe="lsprepost.exe",
+            lsdyna_exe=str(exe or Path(sys.executable)),
+            workspace_root=root,
+            allowed_roots=(root,),
+            variable_maps=default_variable_maps(),
+        )
+
+    def test_validate_lsdyna_solver(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result = validate_lsdyna_solver(config=self._config(root))
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["work_dir"], str(root))
+
+    def test_run_lsdyna_solver_dry_run_builds_safe_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            k_file = root / "case.k"
+            k_file.write_text("*KEYWORD\n*END\n", encoding="utf-8")
+            result = run_lsdyna_solver(
+                k_path="case.k",
+                ncpu=4,
+                memory="200m",
+                additional_args=["jobid=test01"],
+                dry_run=True,
+                config=self._config(root),
+            )
+            self.assertTrue(result["ok"])
+            self.assertIn(f"i={k_file}", result["command"])
+            self.assertIn("ncpu=4", result["command"])
+            self.assertIn("memory=200m", result["command"])
+            self.assertIn("jobid=test01", result["command"])
+
+    def test_run_lsdyna_solver_rejects_unsafe_args(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "case.k").write_text("*KEYWORD\n*END\n", encoding="utf-8")
+            result = run_lsdyna_solver(
+                k_path="case.k",
+                additional_args=["shell"],
+                dry_run=True,
+                config=self._config(root),
+            )
+            self.assertFalse(result["ok"])
+            self.assertIn("Unsupported solver argument", result["message"])
+
+    def test_run_lsdyna_solver_captures_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            k_file = root / "case.k"
+            k_file.write_text("*KEYWORD\n*END\n", encoding="utf-8")
+
+            def fake_run(command, cwd, **kwargs):
+                Path(cwd, "d3hsp").write_text(
+                    "cycle = 20 time = 1.0e-3\nnormal termination\n",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout="solver ok",
+                    stderr="",
+                )
+
+            with patch("subprocess.run", side_effect=fake_run):
+                result = run_lsdyna_solver(
+                    k_path=str(k_file),
+                    ncpu=2,
+                    config=self._config(root),
+                )
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["diagnostics"]["completion_state"], "normal_termination")
+            self.assertEqual(result["diagnostics"]["latest_cycle"], 20)
+            self.assertTrue(Path(result["log_file"]).exists())
+
+    def test_diagnose_lsdyna_logs_finds_errors_and_warnings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "d3hsp").write_text(
+                "Warning 123 something\n"
+                "cycle = 7 time = 2.5e-4\n"
+                "Error 405 negative volume\n",
+                encoding="utf-8",
+            )
+            result = diagnose_lsdyna_logs(case_dir=str(root), config=self._config(root))
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["completion_state"], "error_detected")
+            self.assertTrue(result["has_errors"])
+            self.assertTrue(result["has_warnings"])
+            self.assertEqual(result["latest_time"], 2.5e-4)
+
+
+if __name__ == "__main__":
+    unittest.main()

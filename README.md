@@ -77,6 +77,7 @@ Copy-Item config.example.yaml config.yaml
 
 ```yaml
 lsprepost_exe: "D:/Program Files/Ansys/LS-PrePost-2025R1(4.12)/lsprepost4.12.exe"
+lsdyna_exe: ""
 workspace_root: "D:/lsdyna-projects"
 allowed_roots:
   - "D:/lsdyna-projects"
@@ -88,6 +89,7 @@ case_generator_src: ""
 含义：
 
 - `lsprepost_exe`：本机 LS-PrePost 可执行文件路径。
+- `lsdyna_exe`：可选。本机 LS-DYNA 求解器可执行文件路径，用于 `run_lsdyna_solver`。
 - `workspace_root`：相对路径的默认起点。例如传入 `case01/d3part` 时，会按 `workspace_root/case01/d3part` 解析。
 - `allowed_roots`：安全白名单目录。MCP 只允许读写这些目录下面的文件。
 - `timeout_seconds`：单次 LS-PrePost 调用的超时时间。
@@ -349,6 +351,18 @@ run.json
 ### generate_lsdyna_cases
 
 复用外部 LS-DYNA Batch Case Generator 的现有核心逻辑，从其 JSON 配置生成参数化工况。支持随机采样、LHS、Excel 输入、约束过滤、命名模板、输出索引表和附带资源复制。可以先用 `preview_only=true` 只预览工况和命名结果，再正式导出。
+
+### validate_lsdyna_solver
+
+检查 `lsdyna_exe` 是否存在、求解工作目录是否在 `allowed_roots` 内且可写。正式启动求解前建议先运行一次。
+
+### run_lsdyna_solver
+
+从指定 `k` 文件启动一次 LS-DYNA 求解。支持指定工作目录、CPU 数、memory、额外安全参数、超时时间和 `dry_run`。运行记录会写入工作目录附近的 `.lspp_mcp/`，并在求解结束后自动调用日志诊断。
+
+### diagnose_lsdyna_logs
+
+读取求解目录或指定的 `d3hsp`、`messag`、`status.out` 文件，提取 warning/error、normal termination、最新 time/cycle 和日志尾部内容。适合判断求解是否正常结束、是否有负体积/错误/警告，以及当前运行进展。
 
 ### inspect_keyword_deck
 

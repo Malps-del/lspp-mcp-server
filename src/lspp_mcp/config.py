@@ -128,6 +128,7 @@ def load_yaml_file(path: Path) -> dict[str, Any]:
 @dataclass(frozen=True)
 class LsppConfig:
     lsprepost_exe: str = "lsprepost"
+    lsdyna_exe: str = ""
     workspace_root: Path = field(default_factory=Path.cwd)
     allowed_roots: tuple[Path, ...] = field(default_factory=tuple)
     timeout_seconds: int = 300
@@ -181,6 +182,7 @@ def load_config(path: str | os.PathLike[str] | None = None) -> LsppConfig:
 
     return LsppConfig(
         lsprepost_exe=str(data.get("lsprepost_exe", "lsprepost")),
+        lsdyna_exe=str(data.get("lsdyna_exe", "")),
         workspace_root=workspace_root,
         allowed_roots=allowed_roots,
         timeout_seconds=int(data.get("timeout_seconds", 300)),

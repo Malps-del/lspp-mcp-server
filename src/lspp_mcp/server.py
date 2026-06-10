@@ -22,6 +22,11 @@ from .tools.keyword import (
     check_keyword_deck as _check_keyword_deck,
     inspect_keyword_deck as _inspect_keyword_deck,
 )
+from .tools.solver import (
+    diagnose_lsdyna_logs as _diagnose_lsdyna_logs,
+    run_lsdyna_solver as _run_lsdyna_solver,
+    validate_lsdyna_solver as _validate_lsdyna_solver,
+)
 from .validators import LsppValidationError, validate_lsprepost_installation
 
 try:
@@ -249,6 +254,57 @@ def generate_lsdyna_cases(
     )
 
 
+def validate_lsdyna_solver(
+    solver_exe: str | None = None,
+    work_dir: str | None = None,
+) -> dict[str, Any]:
+    return _validate_lsdyna_solver(
+        solver_exe=solver_exe,
+        work_dir=work_dir,
+        config=load_config(),
+    )
+
+
+def run_lsdyna_solver(
+    k_path: str,
+    work_dir: str | None = None,
+    ncpu: int | None = None,
+    memory: str | None = None,
+    additional_args: list[str] | None = None,
+    dry_run: bool = False,
+    solver_exe: str | None = None,
+    timeout: int | None = None,
+) -> dict[str, Any]:
+    return _run_lsdyna_solver(
+        k_path=k_path,
+        work_dir=work_dir,
+        ncpu=ncpu,
+        memory=memory,
+        additional_args=additional_args,
+        dry_run=dry_run,
+        solver_exe=solver_exe,
+        timeout=timeout,
+        config=load_config(),
+    )
+
+
+def diagnose_lsdyna_logs(
+    case_dir: str | None = None,
+    d3hsp_path: str | None = None,
+    messag_path: str | None = None,
+    status_path: str | None = None,
+    max_findings: int = 50,
+) -> dict[str, Any]:
+    return _diagnose_lsdyna_logs(
+        case_dir=case_dir,
+        d3hsp_path=d3hsp_path,
+        messag_path=messag_path,
+        status_path=status_path,
+        max_findings=max_findings,
+        config=load_config(),
+    )
+
+
 def inspect_keyword_deck(
     k_path: str,
     extra_k_paths: list[str] | None = None,
@@ -292,6 +348,9 @@ if FastMCP is not None:
     mcp.tool()(validate_case_generator_integration)
     mcp.tool()(inspect_lsdyna_case_config)
     mcp.tool()(generate_lsdyna_cases)
+    mcp.tool()(validate_lsdyna_solver)
+    mcp.tool()(run_lsdyna_solver)
+    mcp.tool()(diagnose_lsdyna_logs)
     mcp.tool()(inspect_keyword_deck)
     mcp.tool()(check_keyword_deck)
 else:

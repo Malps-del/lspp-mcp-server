@@ -1,9 +1,9 @@
 # Copy this file to config.yaml and edit paths for your machine.
 lsprepost_exe: "D:/Program Files/Ansys/LS-PrePost-2025R1(4.12)/lsprepost4.12.exe"
+lsdyna_exe: ""
 workspace_root: "D:/lsdyna-post"
 allowed_roots:
   - "D:/lsdyna-post"
-  - "D:/deep-water"
 timeout_seconds: 300
 open_d3plot_command: "openc"
 
