@@ -73,6 +73,8 @@ Current keyword inspection recognizes common LS-DYNA preprocessing families:
 
 Treat these tools as read-only diagnostics. If a deck uses separate files that are not connected through `*INCLUDE`, pass the additional files through `extra_k_paths` or ask the user which file is the true solver entrypoint.
 
+`inspect_keyword_fields` adds structured field parsing for selected keyword schemas and comment-labeled rows. It currently handles `*PARAMETER`, `*PARAMETER_EXPRESSION_LOCAL`, common `*CONTROL_*`, `*DATABASE_*`, ALE setup, tracer, boundary, and initial-condition cards used by the blast/ALE examples. It marks `&parameter` references in field values and returns a derived `parameter_summary`.
+
 ## Batch Case Generator Adapter
 
 The MCP can reuse a separate LS-DYNA Batch Case Generator project through config values:
@@ -81,6 +83,12 @@ The MCP can reuse a separate LS-DYNA Batch Case Generator project through config
 - `case_generator_src`: `src` directory for the external project.
 
 The JSON config path, `k_file_path`, Excel input, output directory, and support files must still be inside MCP `allowed_roots`. Use `overwrite=true` only when the user expects an existing output directory to be reused; the adapter does not delete existing content.
+
+`generate_lsdyna_keyword_field_sweep` is the direct natural-language entry point for one keyword field. It accepts either explicit `values` or `start`/`end`/`step`, defaults to `output_mode="separate_folders"`, and copies direct `*INCLUDE` files unless `copy_include_files=false`. It can target a field by `file_line_number + field_number`, or by `keyword + keyword_instance + line_number_in_block + field_number/field_name`.
+
+`generate_lsdyna_parameter_sweep` is a convenience wrapper for one `*PARAMETER` variable. Do not treat `*PARAMETER` as the only supported case-generation style. When the model does not use `*PARAMETER`, inspect the deck and call `generate_lsdyna_keyword_field_sweep` on the actual keyword field.
+
+Neither simple sweep tool replaces the full JSON-config route when the study needs multiple selected fields, constraints, random/LHS sampling, Excel input, or custom generator state from the desktop app.
 
 ## Solver Config And Logs
 

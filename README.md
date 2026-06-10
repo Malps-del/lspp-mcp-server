@@ -316,25 +316,23 @@ run.json
 
 ### export_d3plot_contour
 
-从 `d3plot` 或 `d3part` 导出指定变量、指定状态帧、指定视角的云图文件。支持 `png`、`jpg`、`bmp`、`gif`、`wrl` 输出格式，并支持 part 显示控制、图例/坐标轴显示控制、背景色、窗口尺寸和云图显示层级。
+从 `d3plot` 或 `d3part` 导出单帧云图。支持变量、状态帧、视角、part、图例、坐标轴、背景、窗口尺寸、显示层级和图片格式设置。
 
 ### export_d3plot_contour_frames
 
-从同一个 `d3plot` 或 `d3part` 连续导出多帧云图。该工具只启动一次 LS-PrePost，在同一个 cfile 中依次执行 `state` 和 `print`，适合第 1 到 30 帧、第 1 到 100 帧这类连续截图任务。支持与单帧云图导出相同的变量、视角、输出格式、part 控制、图例/坐标轴、背景色和云图显示层级。
+从同一个 `d3plot` 或 `d3part` 连续导出多帧云图。适合批量截图，并支持与单帧云图相同的显示和格式设置。
 
 ### extract_ascii_curve
 
-从 `nodout`、`matsum`、`glstat`、`rcforc` 等 ASCII 结果文件导出曲线 CSV。适合提取节点位移/速度/加速度、part 能量、全局能量、接触力等曲线。
+从 `nodout`、`matsum`、`glstat`、`rcforc` 等 ASCII 结果文件导出曲线 CSV。
 
 ### extract_d3plot_node_history
 
-使用 `genselect + ntime` 从 `d3plot` 提取指定节点的历史变量曲线，并保存为 CSV。
+从 `d3plot` 提取指定节点的历史变量曲线，并保存为 CSV。
 
 ### extract_binout_curve
 
 从 `binout` 或 `binout0000` 提取 `glstat`、`matsum`、`trhist`、`dbfsi` 等 block 下的变量曲线，并保存为 CSV。
-
-对于 `matsum`、`trhist`、`dbfsi`，`entity_index` 是 LS-PrePost binaski 的实体序号，不一定等于 LS-DYNA part ID、node ID 或界面 ID。
 
 ### batch_postprocess_cases
 
@@ -342,15 +340,23 @@ run.json
 
 ### validate_case_generator_integration
 
-检查 MCP 是否能调用外部 LS-DYNA Batch Case Generator 项目。会验证 `case_generator_python`、`case_generator_src` 是否可用，并尝试导入其核心服务。
+检查 MCP 是否能调用外部 LS-DYNA Batch Case Generator 项目。
 
 ### inspect_lsdyna_case_config
 
-读取 LS-DYNA Batch Case Generator 保存的 JSON 配置，汇总初始 `k` 文件、已选参数、约束、生成方式、输出设置和关键字概览。该工具只读，不会生成新工况。
+读取 LS-DYNA Batch Case Generator 保存的 JSON 配置，并汇总工况生成设置。
 
 ### generate_lsdyna_cases
 
-复用外部 LS-DYNA Batch Case Generator 的现有核心逻辑，从其 JSON 配置生成参数化工况。支持随机采样、LHS、Excel 输入、约束过滤、命名模板、输出索引表和附带资源复制。可以先用 `preview_only=true` 只预览工况和命名结果，再正式导出。
+根据 LS-DYNA Batch Case Generator 的 JSON 配置生成参数化工况。支持预览和正式导出。
+
+### generate_lsdyna_keyword_field_sweep
+
+批量修改 LS-DYNA `k` 文件中指定 keyword 字段，并生成参数扫描工况。适合直接扫描 `*CONTROL_*`、`*DATABASE_*`、`*INITIAL_*`、`*MAT_*`、`*EOS_*`、`*BOUNDARY_*` 等关键字参数。
+
+### generate_lsdyna_parameter_sweep
+
+批量修改 `*PARAMETER` 中指定参数，并生成参数扫描工况。适合模型通过 `*PARAMETER` 管理参数的情况。
 
 ### validate_lsdyna_solver
 
@@ -358,19 +364,23 @@ run.json
 
 ### run_lsdyna_solver
 
-从指定 `k` 文件启动一次 LS-DYNA 求解。支持指定工作目录、CPU 数、memory、额外安全参数、超时时间和 `dry_run`。运行记录会写入工作目录附近的 `.lspp_mcp/`，并在求解结束后自动调用日志诊断。
+从指定 `k` 文件启动一次 LS-DYNA 求解。支持工作目录、CPU 数、memory、额外参数、超时时间和 dry run。
 
 ### diagnose_lsdyna_logs
 
-读取求解目录或指定的 `d3hsp`、`messag`、`status.out` 文件，提取 warning/error、normal termination、最新 time/cycle 和日志尾部内容。适合判断求解是否正常结束、是否有负体积/错误/警告，以及当前运行进展。
+读取求解日志，汇总错误、警告、终止状态和最新求解进展。
 
 ### inspect_keyword_deck
 
-只读解析 LS-DYNA `k`/keyword 文件，汇总关键字数量、include 文件、材料、截面、part、set、数据库输出卡，以及爆炸冲击/ALE/FSI/接触/载荷等常见关键字族。该工具不会修改原始 `k` 文件。如果一个模型由多个没有互相 include 的 `k` 文件共同组成，可以通过 `extra_k_paths` 一起纳入解析。
+只读解析 LS-DYNA `k`/keyword 文件，汇总关键字、include、材料、part、set、数据库输出和常见仿真功能卡。
+
+### inspect_keyword_fields
+
+只读解析 LS-DYNA keyword block 内的字段、字段值和参数引用。
 
 ### check_keyword_deck
 
-在 `inspect_keyword_deck` 的基础上做前处理检查，例如 include 是否缺失、是否有 `*CONTROL_TERMINATION` 和 `*CONTROL_TIMESTEP`、是否配置 d3plot/d3part、glstat、matsum、extent binary 等常用输出，以及爆炸、ALE、FSI 模型中常见的后处理准备项是否缺失。需要同时检查多个独立 `k` 文件时，同样使用 `extra_k_paths`。
+检查 LS-DYNA keyword 文件中常见的前处理和输出设置问题。
 
 ## 扩展模板
 
