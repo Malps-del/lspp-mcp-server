@@ -25,6 +25,7 @@ class TemplateTests(unittest.TestCase):
                 "background_rgb": "1 1 1",
                 "title_command": "title 0",
                 "range_level_commands": "range level 50\nrange pal update",
+                "color_style_commands": "",
                 "image_format": "png",
                 "print_format": "png",
                 "output_image": "D:/case/post/out.png",
@@ -55,6 +56,7 @@ class TemplateTests(unittest.TestCase):
                 "background_rgb": "1 1 1",
                 "title_command": "title 0",
                 "range_level_commands": "",
+                "color_style_commands": "",
                 "image_format": "wrl",
                 "print_format": "vrml",
                 "output_image": "D:/case/post/out.wrl",
@@ -76,6 +78,7 @@ class TemplateTests(unittest.TestCase):
                 "background_rgb": "1 1 1",
                 "title_command": "title 0",
                 "range_level_commands": "range level 50\nrange pal update",
+                "color_style_commands": "",
                 "image_format": "png",
                 "print_format": "png",
                 "frame_print_commands": (
