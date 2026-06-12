@@ -12,6 +12,11 @@ open_d3plot_command: "openc"
 case_generator_python: ""
 case_generator_src: ""
 
+# Optional LS-PrePost palette files for contour color styles.
+# The built-in styles are available without configuration. Add your own files here.
+color_palettes:
+  # my_palette: "D:/path/to/my_palette.txt"
+
 variables:
   d3plot_fringe:
     pressure: 8

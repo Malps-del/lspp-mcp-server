@@ -135,6 +135,7 @@ class LsppConfig:
     open_d3plot_command: str = "openc"
     case_generator_python: str = ""
     case_generator_src: Path | None = None
+    color_palettes: dict[str, Path] = field(default_factory=dict)
     variable_maps: dict[str, Any] = field(default_factory=default_variable_maps)
 
     def resolved_allowed_roots(self) -> tuple[Path, ...]:
@@ -180,6 +181,15 @@ def load_config(path: str | os.PathLike[str] | None = None) -> LsppConfig:
         _resolve_config_path(item, base_dir) for item in allowed_roots_raw
     )
 
+    color_palettes_raw = data.get("color_palettes") or {}
+    if not isinstance(color_palettes_raw, dict):
+        raise ValueError("color_palettes must be a YAML mapping")
+    color_palettes = {
+        str(name).strip().lower().replace("-", "_"): _resolve_config_path(path, base_dir)
+        for name, path in color_palettes_raw.items()
+        if str(name).strip()
+    }
+
     return LsppConfig(
         lsprepost_exe=str(data.get("lsprepost_exe", "lsprepost")),
         lsdyna_exe=str(data.get("lsdyna_exe", "")),
@@ -191,5 +201,6 @@ def load_config(path: str | os.PathLike[str] | None = None) -> LsppConfig:
         case_generator_src=_resolve_config_path(data["case_generator_src"], base_dir)
         if data.get("case_generator_src")
         else None,
+        color_palettes=color_palettes,
         variable_maps=variable_maps,
     )
