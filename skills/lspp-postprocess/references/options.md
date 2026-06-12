@@ -61,7 +61,40 @@ Use `show_legend` and `show_triad` for legend and coordinate-axis visibility.
 
 Use `background="white"` or `background="black"`.
 
+Use `color_style` for contour palette requests. Built-in style names are returned by `list_contour_color_styles`. Common choices include:
+
+- Perceptually uniform: `viridis`, `plasma`, `inferno`, `magma`, `cividis`
+- Sequential: `greys`, `purples`, `blues`, `greens`, `oranges`, `reds`, `ylorbr`, `ylorrd`, `orrd`, `purd`, `rdpu`, `bupu`, `gnbu`, `pubu`, `ylgnbu`, `pubugn`, `bugn`, `ylgn`
+- Sequential 2: `binary`, `gist_yarg`, `gist_gray`, `gray`, `bone`, `pink`, `spring`, `summer`, `autumn`, `winter`, `cool`, `wistia`, `hot`, `afmhot`, `gist_heat`, `copper`
+- Diverging: `piyg`, `prgn`, `brbg`, `puor`, `rdgy`, `rdbu`, `rdylbu`, `rdylgn`, `spectral`, `coolwarm`, `bwr`, `seismic`
+- Qualitative: `pastel1`, `pastel2`, `paired`, `accent`, `dark2`, `set1`, `set2`, `set3`, `tab10`, `tab20`, `tab20b`, `tab20c`
+- Miscellaneous: `flag`, `prism`, `ocean`, `gist_earth`, `terrain`, `gist_stern`, `gnuplot`, `gnuplot2`, `cmrmap`, `cubehelix`, `brg`, `gist_rainbow`, `rainbow`, `jet`, `turbo`, `nipy_spectral`, `gist_ncar`
+
+The older aliases `viridis_like`, `cividis_like`, `blue_red`, `thermal`, and `grayscale` remain supported.
+
+Color styles are applied through LS-PrePost palette commands, not image post-processing:
+
+```text
+range pal load "path/to/palette.txt"
+range pal update
+```
+
+For one-off custom files, pass `color_palette_path`. For reusable custom styles, register the file in `config.yaml`:
+
+```yaml
+color_palettes:
+  lab_style: "D:/palettes/lab_style.txt"
+```
+
+Built-in palettes are generated to the output `.lspp_mcp/palettes/` folder with one extra row beyond the current `range_level`. Row numbering starts at 0: for `range_level=50`, write rows `0..50`. Row 0 is the low-value end and row `range_level` is the high-value end; LS-PrePost displays the highest row at the top of the colorbar. Built-in files use normalized RGB channels from 0 to 1. When using built-in color styles, prefer setting `range_level` explicitly for reproducible color bands.
+
 Mesh/outline commands can be toggle-like. Probe before batching and record the exact commands in generated cfiles.
+
+## Result Metrics
+
+Use `inspect_lsdyna_results` before broad post-processing requests. It identifies result files, solver logs, completion state, and available post-processing actions.
+
+Use `extract_lsdyna_metrics` on CSV curves when the user asks for peak values, time at peak, final values, mean/RMS, or impulse/integral. Use `compare_lsdyna_cases` when the same metric should be extracted across many case folders.
 
 ## Keyword Deck Checks
 

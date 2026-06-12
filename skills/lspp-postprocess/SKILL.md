@@ -15,7 +15,8 @@ description: Plan and execute LS-PrePost/LS-DYNA post-processing with the lspp M
    - ASCII curve: use `extract_ascii_curve`.
    - Binout curve: use `extract_binout_curve`.
    - Many cases with the same task list: use `batch_postprocess_cases`.
-   - Many states from the same d3plot/d3part: use `export_d3plot_contour_frames` when all frames share the same display settings.
+   - Many states/times/views from the same d3plot/d3part: use `export_d3plot_contour_frames` when all frames share the same display settings.
+   - Result directory inspection and metrics: use `inspect_lsdyna_results`, `extract_lsdyna_metrics`, and `compare_lsdyna_cases`.
    - Simple one-field sweeps from a `k` file: use `generate_lsdyna_keyword_field_sweep` when the target is a concrete keyword field, and use `generate_lsdyna_parameter_sweep` only as a convenience when the model uses `*PARAMETER`.
    - Parameterized LS-DYNA case generation from an existing Batch Case Generator JSON config: validate with `validate_case_generator_integration`, inspect with `inspect_lsdyna_case_config`, then preview/export with `generate_lsdyna_cases`.
    - LS-DYNA solver execution: validate with `validate_lsdyna_solver`, dry-run or launch with `run_lsdyna_solver`, and inspect `d3hsp`/`messag`/`status.out` with `diagnose_lsdyna_logs`. Use `show_console=true` when the user wants a visible LS-DYNA console for live progress and manual solver commands.
@@ -27,7 +28,9 @@ description: Plan and execute LS-PrePost/LS-DYNA post-processing with the lspp M
 
 Use the MCP tool directly when the request is narrow, ordinary, or one-off. The `export_d3plot_contour` tool opens LS-PrePost, exports one state, and exits for each call.
 
-For multi-frame contour exports, prefer `export_d3plot_contour_frames` when the user requests many frames, speed matters, or all frames share the same model, variable, view, parts, legend, range, and format. It opens the d3plot/d3part once, then repeats `state N` and `print ...` for each output file.
+For multi-frame contour exports, prefer `export_d3plot_contour_frames` when the user requests many frames, times, or views and all frames share the same model, variable, parts, legend, range, color style, and format. It opens the d3plot/d3part once, then repeats state/view/print commands for each output file.
+
+For post-processing summaries, inspect the result directory first. Use `extract_lsdyna_metrics` for curve-level values such as peak, time at peak, final value, mean, RMS, and time integral. Use `compare_lsdyna_cases` when the user asks to compare metrics across generated cases.
 
 For LS-DYNA preprocessing questions, keep keyword tools read-only. Use the parser/checker to identify cards, includes, materials, EOS, parts, sections, sets, database outputs, ALE/FSI/blast/contact/load families, and solver-readiness issues before suggesting edits.
 

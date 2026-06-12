@@ -84,6 +84,8 @@ allowed_roots:
 timeout_seconds: 300
 case_generator_python: ""
 case_generator_src: ""
+color_palettes:
+  # lab_style: "D:/palettes/lab_style.txt"
 ```
 
 含义：
@@ -95,6 +97,7 @@ case_generator_src: ""
 - `timeout_seconds`：单次 LS-PrePost 调用的超时时间。
 - `case_generator_python`：可选。已有 LS-DYNA Batch Case Generator 项目的 Python 解释器路径，通常是该项目 `.venv` 里的 `python.exe`。
 - `case_generator_src`：可选。已有 LS-DYNA Batch Case Generator 项目的 `src` 目录。
+- `color_palettes`：可选。把自定义 LS-PrePost 调色板文件注册为颜色风格名，供 `color_style` 调用。
 
 如果你的仿真项目分散在多个目录，可以写多个白名单目录：
 
@@ -316,11 +319,29 @@ run.json
 
 ### export_d3plot_contour
 
-从 `d3plot` 或 `d3part` 导出单帧云图。支持变量、状态帧、视角、part、图例、坐标轴、背景、窗口尺寸、显示层级和图片格式设置。
+从 `d3plot` 或 `d3part` 导出单帧云图。支持变量、状态帧、视角、part、图例、坐标轴、背景、窗口尺寸、显示层级、颜色风格和图片格式设置。颜色风格通过 LS-PrePost 的 palette 文件加载实现。
 
 ### export_d3plot_contour_frames
 
-从同一个 `d3plot` 或 `d3part` 连续导出多帧云图。适合批量截图，并支持与单帧云图相同的显示和格式设置。
+从同一个 `d3plot` 或 `d3part` 连续导出多帧云图。支持按 state 或 time 选择、多视角批量截图，并支持与单帧云图相同的显示和格式设置。
+
+### list_contour_color_styles
+
+列出可用的云图颜色风格预设，以及 `config.yaml` 中注册的自定义 palette 风格。
+
+内置颜色风格会在输出目录旁的 `.lspp_mcp/palettes/` 中生成 LS-PrePost palette 文件，并通过 `range pal load` 加载。palette 文件编号从 `0` 开始，并且会比设定的 `range_level` 多写一行：例如 `range_level=50` 时写 `0..50` 共 51 行。`0` 对应低值端，`range_level` 对应高值端，LS-PrePost 会把最高编号显示在 colorbar 顶部；RGB 通道使用 `0..1` 浮点值。
+
+当前内置风格覆盖常见 Matplotlib 配色类别，例如：
+
+- 感知均匀：`viridis`、`plasma`、`inferno`、`magma`、`cividis`
+- 顺序色图：`greys`、`purples`、`blues`、`greens`、`oranges`、`reds`、`ylorbr`、`ylorrd`、`ylgnbu` 等
+- 发散色图：`rdbu`、`rdylbu`、`rdylgn`、`spectral`、`coolwarm`、`bwr`、`seismic` 等
+- 定性色图：`pastel1`、`pastel2`、`paired`、`accent`、`dark2`、`set1`、`set2`、`set3`、`tab10`、`tab20`
+- 其他常用色图：`hot`、`afmhot`、`gist_heat`、`copper`、`terrain`、`jet`、`turbo`、`nipy_spectral`、`gist_ncar`
+
+### infer_d3plot_state_times
+
+根据求解日志推断 `d3plot` state 与物理时间的对应关系。
 
 ### extract_ascii_curve
 
@@ -369,6 +390,18 @@ run.json
 ### diagnose_lsdyna_logs
 
 读取求解日志，汇总错误、警告、终止状态和最新求解进展。
+
+### inspect_lsdyna_results
+
+识别 LS-DYNA 结果目录中的结果文件、日志状态和可用后处理动作。
+
+### extract_lsdyna_metrics
+
+从曲线 CSV 中计算峰值、峰值时间、终值、均值、RMS 和积分等指标。
+
+### compare_lsdyna_cases
+
+对多个工况提取同一套指标并输出对比汇总 CSV。
 
 ### inspect_keyword_deck
 

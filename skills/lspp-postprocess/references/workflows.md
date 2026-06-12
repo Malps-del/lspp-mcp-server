@@ -11,6 +11,8 @@ Map common phrases before calling tools:
 - "关闭坐标轴" -> `show_triad=False`
 - "关闭图例" -> `show_legend=False`
 - "云图显示层级 50" -> `range_level=50`
+- "viridis", "plasma", "cividis", "turbo", "jet", "seismic", "灰度", "热力图", "蓝红" -> `color_style`
+- "加载这个调色板文件" -> `color_palette_path`
 
 Prefer explicit output folders and deterministic zero-padded names such as `von_mises_state_001.png`.
 
@@ -21,7 +23,7 @@ Use `export_d3plot_contour` for one state. Set:
 - `d3plot_path`: absolute path to `d3plot` or `d3part`
 - `output_png`: output image path, even when the extension is not `.png`
 - `variable`, `state_index`, `view`
-- optional `part_ids`, `show_legend`, `show_triad`, `background`, `window_size`, `range_level`, `image_format`, `overwrite`
+- optional `part_ids`, `show_legend`, `show_triad`, `background`, `window_size`, `range_level`, `color_style`, `color_palette_path`, `image_format`, `overwrite`
 
 The tool returns `output_png`, `output_image`, `image_format`, `generated_cfile`, `log_file`, `ok`, and `message`.
 
@@ -35,10 +37,22 @@ For `export_d3plot_contour_frames`, map requests as:
 
 - "第 1 到 30 帧" -> `state_start=1`, `state_end=30`
 - "第 1、5、10 帧" -> `state_indices=[1, 5, 10]`
+- "0.002s、0.004s 的云图" -> `state_times=[0.002, 0.004]`
+- "front 和 isometric 两个视角" -> `views=["front", "isometric"]`
 - "图片在该目录下新建文件夹保存" -> create/pass `output_dir`
 - "文件名按 ... 命名" -> `filename_template`
 
 Do a one-frame or two-frame probe before large runs when using mesh/outline toggles, unusual formats, or untested display commands.
+
+## Result Inspection And Metrics
+
+Use `inspect_lsdyna_results` when the user asks what result files exist, whether a run is complete, or what post-processing can be done from a case directory.
+
+Use `infer_d3plot_state_times` before time-based image export when the user gives physical times instead of state indices.
+
+Use `extract_lsdyna_metrics` after a curve has been exported to CSV. Map "峰值", "峰值时间", "终值", "均值", "RMS", "冲量", or "积分" to the returned metrics.
+
+Use `compare_lsdyna_cases` when the user asks for a multi-case summary table or parameter-vs-response comparison from repeated case folders.
 
 ## Keyword Deck Inspection
 
