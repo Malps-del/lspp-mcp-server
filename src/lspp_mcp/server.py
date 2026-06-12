@@ -19,6 +19,8 @@ from .tools.d3plot import (
     export_d3plot_contour as _export_d3plot_contour,
     export_d3plot_contour_frames as _export_d3plot_contour_frames,
     extract_d3plot_node_history as _extract_d3plot_node_history,
+    infer_d3plot_state_times as _infer_d3plot_state_times,
+    list_contour_color_styles as _list_contour_color_styles,
 )
 from .tools.keyword import (
     check_keyword_deck as _check_keyword_deck,
@@ -29,6 +31,11 @@ from .tools.solver import (
     diagnose_lsdyna_logs as _diagnose_lsdyna_logs,
     run_lsdyna_solver as _run_lsdyna_solver,
     validate_lsdyna_solver as _validate_lsdyna_solver,
+)
+from .tools.results import (
+    compare_lsdyna_cases as _compare_lsdyna_cases,
+    extract_lsdyna_metrics as _extract_lsdyna_metrics,
+    inspect_lsdyna_results as _inspect_lsdyna_results,
 )
 from .validators import LsppValidationError, validate_lsprepost_installation
 
@@ -64,6 +71,8 @@ def export_d3plot_contour(
     window_size: str = "1600x1200",
     use_nographics: bool = False,
     range_level: int | None = None,
+    color_style: str | None = None,
+    color_palette_path: str | None = None,
     image_format: str | None = None,
     overwrite: bool = False,
 ) -> dict[str, Any]:
@@ -80,6 +89,8 @@ def export_d3plot_contour(
         window_size=window_size,
         use_nographics=use_nographics,
         range_level=range_level,
+        color_style=color_style,
+        color_palette_path=color_palette_path,
         image_format=image_format,
         overwrite=overwrite,
         config=load_config(),
@@ -94,7 +105,10 @@ def export_d3plot_contour_frames(
     state_start: int | None = None,
     state_end: int | None = None,
     state_indices: list[int] | None = None,
+    state_times: list[float] | None = None,
+    time_tolerance: float | None = None,
     filename_template: str = "{variable}_state_{state:03d}.{format}",
+    views: list[str] | None = None,
     part_ids: list[int] | str | int | None = None,
     show_legend: bool = True,
     show_triad: bool = False,
@@ -102,6 +116,8 @@ def export_d3plot_contour_frames(
     window_size: str = "1600x1200",
     use_nographics: bool = False,
     range_level: int | None = None,
+    color_style: str | None = None,
+    color_palette_path: str | None = None,
     image_format: str | None = None,
     overwrite: bool = False,
 ) -> dict[str, Any]:
@@ -113,7 +129,10 @@ def export_d3plot_contour_frames(
         state_start=state_start,
         state_end=state_end,
         state_indices=state_indices,
+        state_times=state_times,
+        time_tolerance=time_tolerance,
         filename_template=filename_template,
+        views=views,
         part_ids=part_ids,
         show_legend=show_legend,
         show_triad=show_triad,
@@ -121,8 +140,21 @@ def export_d3plot_contour_frames(
         window_size=window_size,
         use_nographics=use_nographics,
         range_level=range_level,
+        color_style=color_style,
+        color_palette_path=color_palette_path,
         image_format=image_format,
         overwrite=overwrite,
+        config=load_config(),
+    )
+
+
+def list_contour_color_styles() -> dict[str, Any]:
+    return _list_contour_color_styles(config=load_config())
+
+
+def infer_d3plot_state_times(d3plot_path: str) -> dict[str, Any]:
+    return _infer_d3plot_state_times(
+        d3plot_path=d3plot_path,
         config=load_config(),
     )
 
@@ -410,6 +442,49 @@ def diagnose_lsdyna_logs(
     )
 
 
+def inspect_lsdyna_results(case_dir: str) -> dict[str, Any]:
+    return _inspect_lsdyna_results(
+        case_dir=case_dir,
+        config=load_config(),
+    )
+
+
+def extract_lsdyna_metrics(
+    curve_csv: str,
+    output_json: str | None = None,
+    x_column: str | int | None = None,
+    y_columns: list[str | int] | None = None,
+    time_window: list[float] | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _extract_lsdyna_metrics(
+        curve_csv=curve_csv,
+        output_json=output_json,
+        x_column=x_column,
+        y_columns=y_columns,
+        time_window=time_window,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
+def compare_lsdyna_cases(
+    cases_root: str,
+    output_csv: str,
+    metric_specs: list[dict[str, Any]],
+    case_glob: str = "*",
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _compare_lsdyna_cases(
+        cases_root=cases_root,
+        output_csv=output_csv,
+        metric_specs=metric_specs,
+        case_glob=case_glob,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
 def inspect_keyword_deck(
     k_path: str,
     extra_k_paths: list[str] | None = None,
@@ -467,6 +542,8 @@ if FastMCP is not None:
     mcp.tool()(list_supported_variables)
     mcp.tool()(export_d3plot_contour)
     mcp.tool()(export_d3plot_contour_frames)
+    mcp.tool()(list_contour_color_styles)
+    mcp.tool()(infer_d3plot_state_times)
     mcp.tool()(extract_ascii_curve)
     mcp.tool()(extract_d3plot_node_history)
     mcp.tool()(extract_binout_curve)
@@ -479,6 +556,9 @@ if FastMCP is not None:
     mcp.tool()(validate_lsdyna_solver)
     mcp.tool()(run_lsdyna_solver)
     mcp.tool()(diagnose_lsdyna_logs)
+    mcp.tool()(inspect_lsdyna_results)
+    mcp.tool()(extract_lsdyna_metrics)
+    mcp.tool()(compare_lsdyna_cases)
     mcp.tool()(inspect_keyword_deck)
     mcp.tool()(inspect_keyword_fields)
     mcp.tool()(check_keyword_deck)
