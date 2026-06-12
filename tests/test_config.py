@@ -13,7 +13,7 @@ from lspp_mcp.config import load_config  # noqa: E402
 class ConfigTests(unittest.TestCase):
     def test_color_palettes_are_loaded_relative_to_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve(strict=False)
             config_path = root / "config.yaml"
             config_path.write_text(
                 "\n".join(
