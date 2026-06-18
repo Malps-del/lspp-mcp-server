@@ -1,9 +1,9 @@
 ---
 name: lspp-postprocess
-description: Plan and execute LS-PrePost/LS-DYNA post-processing with the lspp MCP server. Use when Codex needs to export d3plot or d3part contour images, extract node histories, extract ASCII or binout curves, batch states or cases, choose an efficient LS-PrePost cfile strategy, configure or validate LSPP_MCP_CONFIG, handle allowed_roots/workspace paths, select image formats/views/states/variables, tune legend/range/display options, or troubleshoot LS-PrePost MCP outputs.
+description: Plan and execute LS-PrePost/LS-DYNA preprocessing, solving, and post-processing with the lspp MCP server. Use when Codex needs to generate simple keyword meshes, precheck or preview k files, export d3plot or d3part contour images, extract node histories, extract ASCII or binout curves, batch states or cases, choose an efficient LS-PrePost cfile strategy, configure or validate LSPP_MCP_CONFIG, handle allowed_roots/workspace paths, select image formats/views/states/variables, tune legend/range/display options, or troubleshoot LS-PrePost MCP outputs.
 ---
 
-# LS-PrePost Postprocess
+# LS-PrePost Pre/Postprocess
 
 ## Core Workflow
 
@@ -21,6 +21,7 @@ description: Plan and execute LS-PrePost/LS-DYNA post-processing with the lspp M
    - Parameterized LS-DYNA case generation from an existing Batch Case Generator JSON config: validate with `validate_case_generator_integration`, inspect with `inspect_lsdyna_case_config`, then preview/export with `generate_lsdyna_cases`.
    - LS-DYNA solver execution: validate with `validate_lsdyna_solver`, dry-run or launch with `run_lsdyna_solver`, and inspect `d3hsp`/`messag`/`status.out` with `diagnose_lsdyna_logs`. Use `show_console=true` when the user wants a visible LS-DYNA console for live progress and manual solver commands.
    - Keyword deck inspection: use `inspect_keyword_deck` for read-only summaries, `inspect_keyword_fields` for structured keyword fields and `&parameter` references, and `check_keyword_deck` for preprocessing/database-output checks.
+   - Simple keyword mesh generation: use `create_lsdyna_plate_mesh` for rectangular shell plates, `create_lsdyna_block_mesh` for regular hexahedral blocks, and `create_lsdyna_cylinder_shell_mesh` for regular cylindrical shell meshes. Follow with `precheck_lsdyna_keyword_model` and `preview_lsdyna_keyword_model` when the user wants a QA report or LS-PrePost preview image.
 4. Run a small validation first when the request includes fragile display behavior, unfamiliar variables, unusual output formats, or toggle-like LS-PrePost commands.
 5. Always report output folder, naming convention, count of generated files, whether files are nonempty, and where `.lspp_mcp` logs/cfiles were written.
 
@@ -33,6 +34,8 @@ For multi-frame contour exports, prefer `export_d3plot_contour_frames` when the 
 For post-processing summaries, inspect the result directory first. Use `extract_lsdyna_metrics` for curve-level values such as peak, time at peak, final value, mean, RMS, and time integral. Use `compare_lsdyna_cases` when the user asks to compare metrics across generated cases.
 
 For LS-DYNA preprocessing questions, keep keyword tools read-only. Use the parser/checker to identify cards, includes, materials, EOS, parts, sections, sets, database outputs, ALE/FSI/blast/contact/load families, and solver-readiness issues before suggesting edits.
+
+For simple model creation, prefer deterministic keyword generation over free-form LS-PrePost GUI automation. Use `create_lsdyna_plate_mesh`, `create_lsdyna_block_mesh`, or `create_lsdyna_cylinder_shell_mesh` only for regular meshes where the requested dimensions, divisions, material placeholders, and output path are clear. Run `precheck_lsdyna_keyword_model` after generation; run `preview_lsdyna_keyword_model` when LS-PrePost visual confirmation is needed. For complex geometry meshing, ask for or record a representative LS-PrePost cfile workflow before adding a controlled template.
 
 For parameterized case generation, do not reimplement the external desktop project's logic. For simple single-field sweeps, use `generate_lsdyna_keyword_field_sweep`; it can target arbitrary keyword fields by file line or keyword/line/field location and still calls the external project's parser/replacer/exporter. Use `generate_lsdyna_parameter_sweep` only as a convenience when the model uses `*PARAMETER`. For complex sampling, multiple parameters, constraints, or Excel inputs, use the saved JSON config and `generate_lsdyna_cases` so the external generator remains the source of truth.
 
@@ -47,5 +50,5 @@ Do not use raw cfile as a general MCP input. If a custom cfile is needed for eff
 Read only the reference needed for the task:
 
 - `references/workflows.md`: multi-frame exports, curve extraction, batching, and when to use one cfile.
-- `references/options.md`: variables, image formats, views, output naming, and display options.
+- `references/options.md`: variables, image formats, views, output naming, preprocessing mesh options, and display options.
 - `references/troubleshooting.md`: path/config errors, empty outputs, format failures, mesh toggles, timeouts, and validation checks.

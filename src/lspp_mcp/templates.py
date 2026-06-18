@@ -18,6 +18,7 @@ ALLOWED_TEMPLATES = {
     "extract_ascii_curve.cfile.j2",
     "extract_binout_curve.cfile.j2",
     "extract_d3plot_node_history.cfile.j2",
+    "preview_keyword_model.cfile.j2",
 }
 _PLACEHOLDER_RE = re.compile(r"{{\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}")
 

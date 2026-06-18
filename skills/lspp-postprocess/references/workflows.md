@@ -62,6 +62,20 @@ Use `inspect_keyword_fields` when the user asks what values are set inside keywo
 
 Use `check_keyword_deck` when the user asks whether a model is ready for post-processing or solving. It checks missing includes, common control cards, d3plot/d3part/glstat/matsum/nodout/database extent availability, and common blast/ALE/FSI consistency hints.
 
+## Simple Keyword Mesh Generation
+
+Use `create_lsdyna_plate_mesh` for requests such as "generate a rectangular shell plate", "make a fixed-edge plate mesh", or "create a target plate k file". Map length, width, thickness, and either `elem_size` or `nx`/`ny`. Use `fixed_edges=true` only when the user asks for fixed edges or clamped boundaries.
+
+Use `create_lsdyna_block_mesh` for requests such as "generate a regular solid block", "make a water/air/domain block mesh", or "create a hexahedral block k file". Map length, width, height, and either `elem_size` or `nx`/`ny`/`nz`.
+
+Use `create_lsdyna_cylinder_shell_mesh` for requests such as "generate a cylindrical shell", "make a tube shell mesh", or "create a shell cylinder k file". Map radius, height, thickness, and either `elem_size` or `n_circumference`/`nz`. Use `cap_bottom`/`cap_top` when the user asks for closed ends. Closed ends default to `cap_mesh="quad"` with a square core and transition rings; this requires `n_circumference` divisible by 8. Use `cap_mesh="tri"` only when the user accepts triangular cap elements. Use `fixed_bottom` or `fixed_top` only when the user asks for constrained rings.
+
+After generating a simple mesh, inspect the returned `precheck`. If the user asked for a persistent report, pass `precheck_json`. If the user asked to see the model, call `preview_lsdyna_keyword_model` to create a LS-PrePost screenshot.
+
+Use `precheck_lsdyna_keyword_model` for existing `k` files when the user asks about mesh counts, missing node references, duplicate ids, degenerate elements, bounds, part element counts, or solver-readiness checks.
+
+Do not use these simple generators for arbitrary CAD geometry, unstructured meshing, swept meshes, contact setup, ALE/FSI assembly, or production blast models unless a controlled template exists. For those cases, first gather the intended workflow and preferably a hand-recorded LS-PrePost cfile snippet.
+
 ## Parameterized Case Generation
 
 Use `generate_lsdyna_keyword_field_sweep` when the user asks for a straightforward one-field sweep from a `k` file. The target can be any concrete keyword field, not only `*PARAMETER`. Prefer this route for direct edits to cards such as `*CONTROL_TERMINATION`, `*DATABASE_*`, `*INITIAL_DETONATION`, `*MAT_*`, `*EOS_*`, `*BOUNDARY_*`, or other explicit keyword values.

@@ -1,6 +1,6 @@
 # lspp-mcp-server
 
-`lspp-mcp-server` 是一个基于 Python 的 LS-PrePost MCP server。它把经过白名单验证的 LS-PrePost command file 模板封装成稳定、有限、可复核的 MCP tools，用于 LS-DYNA 后处理自动化。
+`lspp-mcp-server` 是一个基于 Python 的 LS-PrePost MCP server。它把经过白名单验证的 LS-PrePost command file 模板和受控 keyword 生成逻辑封装成稳定、有限、可复核的 MCP tools，用于 LS-DYNA 前处理、求解和后处理自动化。
 
 它不允许 AI 传入任意 raw cfile，也不直接操控 LS-PrePost GUI。所有工具只会渲染项目内的模板，执行生成的 `.cfile`，并把 `.cfile`、运行日志、返回码和输出检查结果保存在输出目录旁的 `.lspp_mcp/` 目录中。
 
@@ -414,6 +414,26 @@ run.json
 ### check_keyword_deck
 
 检查 LS-DYNA keyword 文件中常见的前处理和输出设置问题。
+
+### create_lsdyna_plate_mesh
+
+生成规则矩形壳板网格 `k` 文件。支持长度、宽度、厚度、网格划分、材料、数据库输出和可选四边固定约束。
+
+### create_lsdyna_block_mesh
+
+生成规则六面体实体块网格 `k` 文件。支持长、宽、高、网格划分、材料和数据库输出。
+
+### create_lsdyna_cylinder_shell_mesh
+
+生成规则圆柱壳网格 `k` 文件。支持半径、高度、厚度、周向/轴向划分、材料、数据库输出、可选顶部/底部封闭，以及可选顶部/底部固定约束。顶部/底部封闭默认使用方形核心加过渡环的全四边形封盖；也可以显式选择三角形封盖。
+
+### precheck_lsdyna_keyword_model
+
+对 `k` 文件进行前处理预检查，汇总节点、单元、part、包围盒、缺失节点引用、重复编号、退化单元和 keyword 检查结果。
+
+### preview_lsdyna_keyword_model
+
+用 LS-PrePost 打开 `k` 文件并导出模型预览图。适合在生成或修改模型后快速检查几何、网格和视角显示。
 
 ## 扩展模板
 

@@ -146,6 +146,24 @@ class TemplateTests(unittest.TestCase):
         self.assertIn("genselect node add node 1001/0", rendered)
         self.assertIn("ntime 4", rendered)
 
+    def test_keyword_preview_template_renders_open_and_print(self) -> None:
+        rendered = render_template(
+            "preview_keyword_model.cfile.j2",
+            {
+                "k_path": "D:/case/model.k",
+                "view_command": "isometric x",
+                "mesh_command": "mesh on",
+                "show_triad": 1,
+                "background_rgb": "1 1 1",
+                "print_format": "png",
+                "output_image": "D:/case/preview.png",
+            },
+        )
+        self.assertIn('open keyword "D:/case/model.k"', rendered)
+        self.assertIn("mesh on", rendered)
+        self.assertIn('print png "D:/case/preview.png" opaque enlisted "OGL1x1"', rendered)
+        self.assertTrue(rendered.rstrip().endswith("exit"))
+
 
 if __name__ == "__main__":
     unittest.main()

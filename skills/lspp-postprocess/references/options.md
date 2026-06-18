@@ -108,6 +108,20 @@ Treat these tools as read-only diagnostics. If a deck uses separate files that a
 
 `inspect_keyword_fields` adds structured field parsing for selected keyword schemas and comment-labeled rows. It currently handles `*PARAMETER`, `*PARAMETER_EXPRESSION_LOCAL`, common `*CONTROL_*`, `*DATABASE_*`, ALE setup, tracer, boundary, and initial-condition cards used by the blast/ALE examples. It marks `&parameter` references in field values and returns a derived `parameter_summary`.
 
+## Simple Preprocessing Meshes
+
+`create_lsdyna_plate_mesh` writes a rectangular shell plate keyword deck with `*NODE`, `*ELEMENT_SHELL`, `*PART`, `*SECTION_SHELL`, `*MAT_ELASTIC`, common control/database cards, and optional fixed-edge node set/SPC constraints. The caller must provide length, width, thickness, and either `elem_size` or `nx`/`ny`.
+
+`create_lsdyna_block_mesh` writes a regular hexahedral solid block keyword deck with `*NODE`, `*ELEMENT_SOLID`, `*PART`, `*SECTION_SOLID`, `*MAT_ELASTIC`, and common control/database cards. The caller must provide length, width, height, and either `elem_size` or `nx`/`ny`/`nz`.
+
+`create_lsdyna_cylinder_shell_mesh` writes a regular cylindrical shell keyword deck with `*NODE`, `*ELEMENT_SHELL`, `*PART`, `*SECTION_SHELL`, `*MAT_ELASTIC`, and common control/database cards. The caller must provide radius, height, thickness, and either `elem_size` or `n_circumference`/`nz`. Optional `cap_bottom` and `cap_top` close the cylinder. By default `cap_mesh="quad"` creates all-quad caps with a square core and circular-to-square transition rings, so `n_circumference` must be divisible by 8. `cap_radial_layers` controls the number of transition bands and `cap_core_fraction` controls the square-core half side relative to radius. `cap_mesh="tri"` keeps the older center-node triangular caps. Optional `fixed_bottom` and `fixed_top` create ring node sets and SPC constraints.
+
+These generators return mesh counts and run `precheck_lsdyna_keyword_model`. Treat the generated material as a placeholder unless the user explicitly provides real material parameters.
+
+`precheck_lsdyna_keyword_model` reports node count, shell/solid element counts, part element counts, model bounds, duplicate node/element ids, missing node references, unused nodes, degenerate elements, and the existing keyword deck checks.
+
+`preview_lsdyna_keyword_model` opens a `k` file through LS-PrePost and exports a model screenshot. Supported preview formats follow the same stable set used by contour images: `png`, `jpg`, `bmp`, `gif`, and `wrl`.
+
 ## Batch Case Generator Adapter
 
 The MCP can reuse a separate LS-DYNA Batch Case Generator project through config values:

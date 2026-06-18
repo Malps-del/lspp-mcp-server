@@ -27,6 +27,13 @@ from .tools.keyword import (
     inspect_keyword_deck as _inspect_keyword_deck,
     inspect_keyword_fields as _inspect_keyword_fields,
 )
+from .tools.preprocess import (
+    create_lsdyna_block_mesh as _create_lsdyna_block_mesh,
+    create_lsdyna_cylinder_shell_mesh as _create_lsdyna_cylinder_shell_mesh,
+    create_lsdyna_plate_mesh as _create_lsdyna_plate_mesh,
+    precheck_lsdyna_keyword_model as _precheck_lsdyna_keyword_model,
+    preview_lsdyna_keyword_model as _preview_lsdyna_keyword_model,
+)
 from .tools.solver import (
     diagnose_lsdyna_logs as _diagnose_lsdyna_logs,
     run_lsdyna_solver as _run_lsdyna_solver,
@@ -536,6 +543,199 @@ def check_keyword_deck(
     )
 
 
+def create_lsdyna_plate_mesh(
+    output_k: str,
+    length: float,
+    width: float,
+    thickness: float,
+    elem_size: float | None = None,
+    nx: int | None = None,
+    ny: int | None = None,
+    part_id: int = 1,
+    section_id: int = 1,
+    material_id: int = 1,
+    density: float = 7.85e-9,
+    young: float = 210000.0,
+    poisson: float = 0.3,
+    title: str = "generated_shell_plate",
+    fixed_edges: bool = False,
+    boundary_set_id: int = 1001,
+    termination_time: float = 1.0,
+    database_dt: float = 0.01,
+    overwrite: bool = False,
+    precheck_json: str | None = None,
+) -> dict[str, Any]:
+    return _create_lsdyna_plate_mesh(
+        output_k=output_k,
+        length=length,
+        width=width,
+        thickness=thickness,
+        elem_size=elem_size,
+        nx=nx,
+        ny=ny,
+        part_id=part_id,
+        section_id=section_id,
+        material_id=material_id,
+        density=density,
+        young=young,
+        poisson=poisson,
+        title=title,
+        fixed_edges=fixed_edges,
+        boundary_set_id=boundary_set_id,
+        termination_time=termination_time,
+        database_dt=database_dt,
+        overwrite=overwrite,
+        precheck_json=precheck_json,
+        config=load_config(),
+    )
+
+
+def create_lsdyna_block_mesh(
+    output_k: str,
+    length: float,
+    width: float,
+    height: float,
+    elem_size: float | None = None,
+    nx: int | None = None,
+    ny: int | None = None,
+    nz: int | None = None,
+    part_id: int = 1,
+    section_id: int = 1,
+    material_id: int = 1,
+    density: float = 7.85e-9,
+    young: float = 210000.0,
+    poisson: float = 0.3,
+    title: str = "generated_solid_block",
+    termination_time: float = 1.0,
+    database_dt: float = 0.01,
+    overwrite: bool = False,
+    precheck_json: str | None = None,
+) -> dict[str, Any]:
+    return _create_lsdyna_block_mesh(
+        output_k=output_k,
+        length=length,
+        width=width,
+        height=height,
+        elem_size=elem_size,
+        nx=nx,
+        ny=ny,
+        nz=nz,
+        part_id=part_id,
+        section_id=section_id,
+        material_id=material_id,
+        density=density,
+        young=young,
+        poisson=poisson,
+        title=title,
+        termination_time=termination_time,
+        database_dt=database_dt,
+        overwrite=overwrite,
+        precheck_json=precheck_json,
+        config=load_config(),
+    )
+
+
+def create_lsdyna_cylinder_shell_mesh(
+    output_k: str,
+    radius: float,
+    height: float,
+    thickness: float,
+    elem_size: float | None = None,
+    n_circumference: int | None = None,
+    nz: int | None = None,
+    part_id: int = 1,
+    section_id: int = 1,
+    material_id: int = 1,
+    density: float = 7.85e-9,
+    young: float = 210000.0,
+    poisson: float = 0.3,
+    title: str = "generated_cylinder_shell",
+    cap_bottom: bool = False,
+    cap_top: bool = False,
+    cap_mesh: str = "quad",
+    cap_radial_layers: int = 2,
+    cap_core_fraction: float = 0.5,
+    fixed_bottom: bool = False,
+    fixed_top: bool = False,
+    bottom_set_id: int = 1001,
+    top_set_id: int = 1002,
+    termination_time: float = 1.0,
+    database_dt: float = 0.01,
+    overwrite: bool = False,
+    precheck_json: str | None = None,
+) -> dict[str, Any]:
+    return _create_lsdyna_cylinder_shell_mesh(
+        output_k=output_k,
+        radius=radius,
+        height=height,
+        thickness=thickness,
+        elem_size=elem_size,
+        n_circumference=n_circumference,
+        nz=nz,
+        part_id=part_id,
+        section_id=section_id,
+        material_id=material_id,
+        density=density,
+        young=young,
+        poisson=poisson,
+        title=title,
+        cap_bottom=cap_bottom,
+        cap_top=cap_top,
+        cap_mesh=cap_mesh,
+        cap_radial_layers=cap_radial_layers,
+        cap_core_fraction=cap_core_fraction,
+        fixed_bottom=fixed_bottom,
+        fixed_top=fixed_top,
+        bottom_set_id=bottom_set_id,
+        top_set_id=top_set_id,
+        termination_time=termination_time,
+        database_dt=database_dt,
+        overwrite=overwrite,
+        precheck_json=precheck_json,
+        config=load_config(),
+    )
+
+
+def precheck_lsdyna_keyword_model(
+    k_path: str,
+    output_json: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _precheck_lsdyna_keyword_model(
+        k_path=k_path,
+        output_json=output_json,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
+def preview_lsdyna_keyword_model(
+    k_path: str,
+    output_image: str,
+    view: str = "isometric",
+    show_mesh: bool = True,
+    show_triad: bool = True,
+    background: str = "white",
+    window_size: str = "1600x1200",
+    use_nographics: bool = False,
+    image_format: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _preview_lsdyna_keyword_model(
+        k_path=k_path,
+        output_image=output_image,
+        view=view,
+        show_mesh=show_mesh,
+        show_triad=show_triad,
+        background=background,
+        window_size=window_size,
+        use_nographics=use_nographics,
+        image_format=image_format,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
 if FastMCP is not None:
     mcp = FastMCP("lspp-mcp-server")
     mcp.tool()(validate_lsprepost)
@@ -562,6 +762,11 @@ if FastMCP is not None:
     mcp.tool()(inspect_keyword_deck)
     mcp.tool()(inspect_keyword_fields)
     mcp.tool()(check_keyword_deck)
+    mcp.tool()(create_lsdyna_plate_mesh)
+    mcp.tool()(create_lsdyna_block_mesh)
+    mcp.tool()(create_lsdyna_cylinder_shell_mesh)
+    mcp.tool()(precheck_lsdyna_keyword_model)
+    mcp.tool()(preview_lsdyna_keyword_model)
 else:
     mcp = None
 
