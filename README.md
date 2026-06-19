@@ -435,6 +435,34 @@ run.json
 
 用 LS-PrePost 打开 `k` 文件并导出模型预览图。适合在生成或修改模型后快速检查几何、网格和视角显示。
 
+### create_initial_volume_fraction_geometry
+
+生成 `*INITIAL_VOLUME_FRACTION_GEOMETRY` keyword block 或 include 文件。支持 part、segment、plane、cylinder/cone、box、sphere 和 user function 几何容器，用于在已有 ALE 网格中定义惰性材料填充区域。
+
+### append_initial_volume_fraction_geometry
+
+把 `*INITIAL_VOLUME_FRACTION_GEOMETRY` 填充块追加到已有 `k` 文件，默认插入到 `*END` 前，并输出新的 `k` 文件。
+
+### inspect_initial_volume_fraction_geometry
+
+解析已有 `k` 文件中的 `*INITIAL_VOLUME_FRACTION_GEOMETRY` 块，汇总背景 ALE 域、背景 AMMG、填充动作、几何类型、填充方向和几何参数。
+
+### create_lsdyna_cylindrical_assembly
+
+生成规则圆柱装配 `k` 文件。支持封闭圆柱壳、惰性内部几何填充、沿圆周/高度规则布置的实体附加块，以及规则集中质量点。
+
+### check_lsdyna_cylindrical_assembly
+
+检查圆柱装配 `k` 文件的网格、壳体闭合边、质量点统计、重复编号、缺失节点引用和常见 keyword 设置问题，可输出 JSON 检查报告。
+
+### create_lsdyna_sale_fluid_domain
+
+生成规则 S-ALE 流体域 `k` 文件。支持三维矩形域或轴对称域、结构化网格控制点、多材料组、边界面设置、占位材料和可选初始体积分数填充。
+
+### check_lsdyna_sale_fluid_domain
+
+检查 S-ALE 流体域 `k` 文件的结构化网格、控制点、多材料组、边界面和初始体积分数填充设置，可输出 JSON 检查报告。
+
 ## 扩展模板
 
 新增模板时：

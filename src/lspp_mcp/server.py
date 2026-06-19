@@ -6,6 +6,15 @@ from typing import Any
 
 from .config import load_config
 from .tools.ascii_curves import extract_ascii_curve as _extract_ascii_curve
+from .tools.ale import (
+    append_initial_volume_fraction_geometry as _append_initial_volume_fraction_geometry,
+    create_initial_volume_fraction_geometry as _create_initial_volume_fraction_geometry,
+    inspect_initial_volume_fraction_geometry as _inspect_initial_volume_fraction_geometry,
+)
+from .tools.assembly import (
+    check_lsdyna_cylindrical_assembly as _check_lsdyna_cylindrical_assembly,
+    create_lsdyna_cylindrical_assembly as _create_lsdyna_cylindrical_assembly,
+)
 from .tools.batch import batch_postprocess_cases as _batch_postprocess_cases
 from .tools.binout import extract_binout_curve as _extract_binout_curve
 from .tools.casegen import (
@@ -43,6 +52,10 @@ from .tools.results import (
     compare_lsdyna_cases as _compare_lsdyna_cases,
     extract_lsdyna_metrics as _extract_lsdyna_metrics,
     inspect_lsdyna_results as _inspect_lsdyna_results,
+)
+from .tools.sale import (
+    check_lsdyna_sale_fluid_domain as _check_lsdyna_sale_fluid_domain,
+    create_lsdyna_sale_fluid_domain as _create_lsdyna_sale_fluid_domain,
 )
 from .validators import LsppValidationError, validate_lsprepost_installation
 
@@ -736,6 +749,209 @@ def preview_lsdyna_keyword_model(
     )
 
 
+def create_initial_volume_fraction_geometry(
+    output_k: str,
+    fmsid: int,
+    bammg: int | str,
+    fills: list[dict[str, Any]],
+    fmidtyp: int = 1,
+    ntrace: int = 3,
+    comments: bool = True,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _create_initial_volume_fraction_geometry(
+        output_k=output_k,
+        fmsid=fmsid,
+        fmidtyp=fmidtyp,
+        bammg=bammg,
+        ntrace=ntrace,
+        fills=fills,
+        comments=comments,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
+def append_initial_volume_fraction_geometry(
+    k_path: str,
+    output_k: str,
+    fmsid: int,
+    bammg: int | str,
+    fills: list[dict[str, Any]],
+    fmidtyp: int = 1,
+    ntrace: int = 3,
+    comments: bool = True,
+    insert_before_end: bool = True,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _append_initial_volume_fraction_geometry(
+        k_path=k_path,
+        output_k=output_k,
+        fmsid=fmsid,
+        fmidtyp=fmidtyp,
+        bammg=bammg,
+        ntrace=ntrace,
+        fills=fills,
+        comments=comments,
+        insert_before_end=insert_before_end,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
+def inspect_initial_volume_fraction_geometry(k_path: str) -> dict[str, Any]:
+    return _inspect_initial_volume_fraction_geometry(
+        k_path=k_path,
+        config=load_config(),
+    )
+
+
+def create_lsdyna_cylindrical_assembly(
+    output_k: str,
+    radius: float,
+    height: float,
+    thickness: float,
+    elem_size: float | None = None,
+    n_circumference: int | None = None,
+    nz: int | None = None,
+    cap_bottom: bool = True,
+    cap_top: bool = True,
+    cap_mesh: str = "quad",
+    cap_radial_layers: int = 2,
+    cap_core_fraction: float = 0.5,
+    shell_part_id: int = 1,
+    shell_section_id: int = 1,
+    shell_material_id: int = 1,
+    shell_density: float = 7.85e-9,
+    shell_young: float = 210000.0,
+    shell_poisson: float = 0.3,
+    attached_blocks: list[dict[str, Any]] | None = None,
+    mass_points: list[dict[str, Any]] | None = None,
+    internal_fill: dict[str, Any] | None = None,
+    title: str = "generated_cylindrical_assembly",
+    termination_time: float = 1.0,
+    database_dt: float = 0.01,
+    overwrite: bool = False,
+    check_json: str | None = None,
+) -> dict[str, Any]:
+    return _create_lsdyna_cylindrical_assembly(
+        output_k=output_k,
+        radius=radius,
+        height=height,
+        thickness=thickness,
+        elem_size=elem_size,
+        n_circumference=n_circumference,
+        nz=nz,
+        cap_bottom=cap_bottom,
+        cap_top=cap_top,
+        cap_mesh=cap_mesh,
+        cap_radial_layers=cap_radial_layers,
+        cap_core_fraction=cap_core_fraction,
+        shell_part_id=shell_part_id,
+        shell_section_id=shell_section_id,
+        shell_material_id=shell_material_id,
+        shell_density=shell_density,
+        shell_young=shell_young,
+        shell_poisson=shell_poisson,
+        attached_blocks=attached_blocks,
+        mass_points=mass_points,
+        internal_fill=internal_fill,
+        title=title,
+        termination_time=termination_time,
+        database_dt=database_dt,
+        overwrite=overwrite,
+        check_json=check_json,
+        config=load_config(),
+    )
+
+
+def check_lsdyna_cylindrical_assembly(
+    k_path: str,
+    shell_radius: float | None = None,
+    shell_height: float | None = None,
+    expect_closed_shell: bool = True,
+    output_json: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _check_lsdyna_cylindrical_assembly(
+        k_path=k_path,
+        shell_radius=shell_radius,
+        shell_height=shell_height,
+        expect_closed_shell=expect_closed_shell,
+        output_json=output_json,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
+def create_lsdyna_sale_fluid_domain(
+    output_k: str,
+    x_range: list[float],
+    y_range: list[float],
+    z_range: list[float] | None = None,
+    nx: int = 10,
+    ny: int = 10,
+    nz: int | None = None,
+    axisymmetric: bool = False,
+    mesh_id: int = 1,
+    domain_part_id: int = 101,
+    section_id: int = 101,
+    material_id: int = 1001,
+    background_ammg: int = 1,
+    materials: list[dict[str, Any]] | None = None,
+    fills: list[dict[str, Any]] | None = None,
+    boundary_type: str = "NONREFL",
+    include_control_ale: bool = True,
+    include_placeholder_materials: bool = True,
+    termination_time: float = 1.0,
+    database_dt: float = 0.01,
+    title: str = "generated_sale_fluid_domain",
+    overwrite: bool = False,
+    check_json: str | None = None,
+) -> dict[str, Any]:
+    return _create_lsdyna_sale_fluid_domain(
+        output_k=output_k,
+        x_range=x_range,
+        y_range=y_range,
+        z_range=z_range,
+        nx=nx,
+        ny=ny,
+        nz=nz,
+        axisymmetric=axisymmetric,
+        mesh_id=mesh_id,
+        domain_part_id=domain_part_id,
+        section_id=section_id,
+        material_id=material_id,
+        background_ammg=background_ammg,
+        materials=materials,
+        fills=fills,
+        boundary_type=boundary_type,
+        include_control_ale=include_control_ale,
+        include_placeholder_materials=include_placeholder_materials,
+        termination_time=termination_time,
+        database_dt=database_dt,
+        title=title,
+        overwrite=overwrite,
+        check_json=check_json,
+        config=load_config(),
+    )
+
+
+def check_lsdyna_sale_fluid_domain(
+    k_path: str,
+    expect_axisymmetric: bool | None = None,
+    output_json: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    return _check_lsdyna_sale_fluid_domain(
+        k_path=k_path,
+        expect_axisymmetric=expect_axisymmetric,
+        output_json=output_json,
+        overwrite=overwrite,
+        config=load_config(),
+    )
+
+
 if FastMCP is not None:
     mcp = FastMCP("lspp-mcp-server")
     mcp.tool()(validate_lsprepost)
@@ -767,6 +983,13 @@ if FastMCP is not None:
     mcp.tool()(create_lsdyna_cylinder_shell_mesh)
     mcp.tool()(precheck_lsdyna_keyword_model)
     mcp.tool()(preview_lsdyna_keyword_model)
+    mcp.tool()(create_initial_volume_fraction_geometry)
+    mcp.tool()(append_initial_volume_fraction_geometry)
+    mcp.tool()(inspect_initial_volume_fraction_geometry)
+    mcp.tool()(create_lsdyna_cylindrical_assembly)
+    mcp.tool()(check_lsdyna_cylindrical_assembly)
+    mcp.tool()(create_lsdyna_sale_fluid_domain)
+    mcp.tool()(check_lsdyna_sale_fluid_domain)
 else:
     mcp = None
 

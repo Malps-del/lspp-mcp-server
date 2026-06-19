@@ -76,6 +76,47 @@ Use `precheck_lsdyna_keyword_model` for existing `k` files when the user asks ab
 
 Do not use these simple generators for arbitrary CAD geometry, unstructured meshing, swept meshes, contact setup, ALE/FSI assembly, or production blast models unless a controlled template exists. For those cases, first gather the intended workflow and preferably a hand-recorded LS-PrePost cfile snippet.
 
+## Regular Cylindrical Assembly Generation
+
+Use `create_lsdyna_cylindrical_assembly` for requests such as "generate a closed cylindrical shell with neutral filling and regular attached blocks" or "make a cylindrical shell assembly with point masses". Map shell radius, height, thickness, and either `elem_size` or `n_circumference`/`nz`.
+
+Use `attached_blocks` for regular solid block arrays on or near the shell surface. Map count around circumference, count along height, radial thickness, circumferential width, block height, radial gap, and optional starting angle or z margin.
+
+Use `mass_points` only when the user wants simplified concentrated masses instead of meshed solid blocks. Map count around circumference, count along height, mass per point, radial offset, and optional starting angle or z margin.
+
+Use `internal_fill` only for neutral geometric occupancy setup. It can auto-create a cylindrical `*INITIAL_VOLUME_FRACTION_GEOMETRY` fill when given `fmsid`, `bammg`, `fammg`, and optional fill radius.
+
+After generating an assembly, inspect the returned `check`. If visual confirmation is needed, call `preview_lsdyna_keyword_model`.
+
+## S-ALE Fluid Domain Generation
+
+Use `create_lsdyna_sale_fluid_domain` for requests such as "generate an S-ALE fluid domain", "make a structured ALE air/water domain", or "create an axisymmetric S-ALE domain". Map domain extents to `x_range`, `y_range`, and, for 3D domains, `z_range`. Map grid divisions to `nx`, `ny`, and `nz`.
+
+Use `axisymmetric=true` when the user asks for an axisymmetric S-ALE domain. In that case, do not pass `z_range`; the generated mesh uses two structured control-point directions and `*ALE_STRUCTURED_MULTI-MATERIAL_GROUP_AXISYM`.
+
+Use `materials` to preserve user-specified AMMG, material ID, EOS ID, density, reference pressure, and names. If the user does not provide real material data, keep the generated cards as placeholders and say so.
+
+Use `fills` for neutral initial occupancy setup. The fill geometry options are the same as `create_initial_volume_fraction_geometry`.
+
+After generating the domain, inspect the returned `check`. If the model is intended to interact with Lagrangian structure, the current tool does not automatically create FSI coupling; ask for or generate that as a separate controlled step.
+
+## ALE Volume Filling
+
+Use `inspect_initial_volume_fraction_geometry` when the user asks how an existing ALE deck fills materials, or when you need to identify background ALE mesh ID, background AMMG, container types, and fill AMMG IDs.
+
+Use `create_initial_volume_fraction_geometry` to write a standalone include file containing only `*INITIAL_VOLUME_FRACTION_GEOMETRY`. Use `append_initial_volume_fraction_geometry` when the user asks to add the fill setup to an existing `k` file.
+
+Map neutral fill requests as:
+
+- cylindrical region -> `geometry="cylinder"`, `point0`, `point1`, `radius`
+- conical region -> `geometry="cone"`, `point0`, `point1`, `radii=[r1, r2]`
+- box region -> `geometry="box"`, `min`, `max`, optional `lcsid`
+- sphere region -> `geometry="sphere"`, `center`, `radius`
+- side of a plane -> `geometry="plane"`, `point`, `normal`
+- shell/segment container -> `geometry="part"` or `geometry="segment"`
+
+Keep this feature limited to initial volume fraction geometry setup. Do not generate explosive material models, detonation cards, or weapon-effect calculations.
+
 ## Parameterized Case Generation
 
 Use `generate_lsdyna_keyword_field_sweep` when the user asks for a straightforward one-field sweep from a `k` file. The target can be any concrete keyword field, not only `*PARAMETER`. Prefer this route for direct edits to cards such as `*CONTROL_TERMINATION`, `*DATABASE_*`, `*INITIAL_DETONATION`, `*MAT_*`, `*EOS_*`, `*BOUNDARY_*`, or other explicit keyword values.

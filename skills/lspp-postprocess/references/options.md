@@ -122,6 +122,38 @@ These generators return mesh counts and run `precheck_lsdyna_keyword_model`. Tre
 
 `preview_lsdyna_keyword_model` opens a `k` file through LS-PrePost and exports a model screenshot. Supported preview formats follow the same stable set used by contour images: `png`, `jpg`, `bmp`, `gif`, and `wrl`.
 
+## Regular Cylindrical Assemblies
+
+`create_lsdyna_cylindrical_assembly` writes a regular cylindrical assembly keyword deck. It supports a closed or open cylindrical shell, optional neutral `*INITIAL_VOLUME_FRACTION_GEOMETRY` internal filling, regular solid attached block arrays, and regular `*ELEMENT_MASS` point arrays.
+
+For attached blocks, each specification should provide `count_circumference`, `count_height`, `radial_thickness`, `circumferential_width`, and `height`. Optional fields include `radial_gap`, `start_angle_deg`, `z_margin`, `part_id`, `section_id`, `material_id`, and placeholder elastic material values.
+
+For mass points, each specification should provide `count_circumference`, `count_height`, and `mass`. Optional fields include `radial_offset`, `start_angle_deg`, and `z_margin`.
+
+`check_lsdyna_cylindrical_assembly` reports mesh counts, shell boundary/nonmanifold edges, concentrated mass statistics, duplicate ids, missing node references, degenerate elements, and keyword-deck checks. Use it after generation and before preview or solving.
+
+## S-ALE Fluid Domains
+
+`create_lsdyna_sale_fluid_domain` writes a regular S-ALE fluid-domain keyword deck. It supports 3D rectangular domains and axisymmetric domains, structured mesh control points, S-ALE boundary faces, structured multi-material groups, optional placeholder material/EOS cards, and optional neutral `*INITIAL_VOLUME_FRACTION_GEOMETRY` fills.
+
+For 3D domains, provide `x_range`, `y_range`, `z_range`, `nx`, `ny`, and `nz`. For axisymmetric domains, set `axisymmetric=true` and provide `x_range`, `y_range`, `nx`, and `ny`.
+
+`materials` should list AMMG definitions with `ammg`, `mid`, optional `eosid`, optional `density`, optional `pref`, and optional `name`. The list must include `background_ammg`.
+
+`fills` uses the same geometry mapping as `create_initial_volume_fraction_geometry`. Use it for neutral initial occupancy such as a box, cylinder, sphere, plane, part, or segment region.
+
+`check_lsdyna_sale_fluid_domain` reports structured mesh count, control point count, multi-material-group type, boundary face availability, initial volume-fraction block count, and keyword-deck issues.
+
+## ALE Volume Filling
+
+`create_initial_volume_fraction_geometry` writes a standalone `*INITIAL_VOLUME_FRACTION_GEOMETRY` block. Required inputs are `fmsid`, `fmidtyp`, `bammg`, `ntrace`, and one or more `fills`. Each fill has `geometry`, `fillopt`, `fammg`, optional `velocity`, and geometry-specific fields.
+
+Supported fill geometries are `part`, `segment`, `plane`, `cylinder`, `cone`, `box`, `sphere`, and `function`. For `cylinder`, provide `point0`, `point1`, and `radius`; for `box`, provide `min` and `max`; for `sphere`, provide `center` and `radius`.
+
+`append_initial_volume_fraction_geometry` copies an existing keyword deck and inserts the generated fill block before `*END` by default.
+
+`inspect_initial_volume_fraction_geometry` parses existing `*INITIAL_VOLUME_FRACTION_GEOMETRY` blocks, including decks without comment labels, and returns card 1 values plus each fill action's container type, fill option, AMMG, velocity, and geometry details.
+
 ## Batch Case Generator Adapter
 
 The MCP can reuse a separate LS-DYNA Batch Case Generator project through config values:
