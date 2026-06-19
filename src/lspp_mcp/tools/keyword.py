@@ -123,7 +123,10 @@ FIELD_SCHEMAS: dict[str, list[list[str]]] = {
     "*ALE_STRUCTURED_MESH_CONTROL_POINTS": [
         ["mshid", "dir", "start", "end", "ratio", "bias"],
     ],
-    "*ALE_STRUCTURED_MULTI-MATERIAL_GROUP_AXISYM": [["mshid", "mmgset"]],
+    "*ALE_STRUCTURED_MULTI-MATERIAL_GROUP": [["ammgnm", "mid", "eosid", "-", "-", "-", "-", "pref"]],
+    "*ALE_STRUCTURED_MULTI-MATERIAL_GROUP_AXISYM": [
+        ["ammgnm", "mid", "eosid", "-", "-", "-", "-", "pref"]
+    ],
 }
 
 

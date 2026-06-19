@@ -130,6 +130,12 @@ def _database_cards(termination_time: float, database_dt: float) -> list[str]:
         "*DATABASE_EXTENT_BINARY",
         "$#   neiph     neips    maxint    strflg    sigflg    epsflg    rltflg    engflg",
         "0, 0, 3, 1, 1, 1, 1, 1",
+        "$#  cmpflg    ieverp    beamip     dcomp      shge     stssz    n3thdt   ialemat",
+        "0, 0, 0, 1, 1, 1, 2, 1",
+        "$# nintsld   pkp_sen      sclp     hydro     msscl     therm    intout",
+        "0, 0, 1, 0, 0, 0, 0",
+        "$# nodout    dthdtp     norot",
+        "0, 0, 0",
     ]
 
 
