@@ -16,7 +16,11 @@ from .tools.assembly import (
     create_lsdyna_cylindrical_assembly as _create_lsdyna_cylindrical_assembly,
 )
 from .tools.batch import batch_postprocess_cases as _batch_postprocess_cases
-from .tools.binout import extract_binout_curve as _extract_binout_curve
+from .tools.binout import (
+    extract_binout_curve as _extract_binout_curve,
+    extract_binout_metrics as _extract_binout_metrics,
+    inspect_binout_contents as _inspect_binout_contents,
+)
 from .tools.casegen import (
     generate_lsdyna_cases as _generate_lsdyna_cases,
     generate_lsdyna_keyword_field_sweep as _generate_lsdyna_keyword_field_sweep,
@@ -230,6 +234,7 @@ def extract_binout_curve(
     mpp: bool = False,
     xyplot_window: int = 1,
     overwrite: bool = False,
+    backend: str = "auto",
 ) -> dict[str, Any]:
     return _extract_binout_curve(
         binout_path=binout_path,
@@ -240,6 +245,47 @@ def extract_binout_curve(
         mpp=mpp,
         xyplot_window=xyplot_window,
         overwrite=overwrite,
+        backend=backend,
+        config=load_config(),
+    )
+
+
+def inspect_binout_contents(
+    binout_path: str,
+    backend: str = "auto",
+) -> dict[str, Any]:
+    return _inspect_binout_contents(
+        binout_path=binout_path,
+        backend=backend,
+        config=load_config(),
+    )
+
+
+def extract_binout_metrics(
+    binout_path: str,
+    block: str,
+    variable: str,
+    entity_index: int | None = None,
+    backend: str = "auto",
+    metrics: list[str] | None = None,
+    time_window: list[float] | None = None,
+    pressure_proxy: bool = False,
+    shock_window: list[float] | None = None,
+    bubble_window: list[float] | None = None,
+    arrival_threshold_fraction: float = 0.05,
+) -> dict[str, Any]:
+    return _extract_binout_metrics(
+        binout_path=binout_path,
+        block=block,
+        variable=variable,
+        entity_index=entity_index,
+        backend=backend,
+        metrics=metrics,
+        time_window=time_window,
+        pressure_proxy=pressure_proxy,
+        shock_window=shock_window,
+        bubble_window=bubble_window,
+        arrival_threshold_fraction=arrival_threshold_fraction,
         config=load_config(),
     )
 
@@ -963,6 +1009,8 @@ if FastMCP is not None:
     mcp.tool()(extract_ascii_curve)
     mcp.tool()(extract_d3plot_node_history)
     mcp.tool()(extract_binout_curve)
+    mcp.tool()(inspect_binout_contents)
+    mcp.tool()(extract_binout_metrics)
     mcp.tool()(batch_postprocess_cases)
     mcp.tool()(validate_case_generator_integration)
     mcp.tool()(inspect_lsdyna_case_config)

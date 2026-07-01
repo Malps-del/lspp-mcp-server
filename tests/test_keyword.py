@@ -203,6 +203,55 @@ class KeywordToolTests(unittest.TestCase):
             self.assertEqual(fields["endtim"], "0.05")
             self.assertEqual(fields["endmas"], "1.000000E8")
 
+    def test_structured_fsi_and_rigid_discrete_are_recognized(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "main.k").write_text(
+                "\n".join(
+                    [
+                        "*KEYWORD",
+                        "*CONTROL_TERMINATION",
+                        "1.0",
+                        "*CONTROL_TIMESTEP",
+                        "0",
+                        "*DATABASE_BINARY_D3PLOT",
+                        "1.0e-4",
+                        "*MAT_RIGID_DISCRETE_TITLE",
+                        "rigid-discrete blocks",
+                        "406, 7800.0, 2.05e11, 0.33",
+                        "*ALE_STRUCTURED_FSI",
+                        "$# lstrsid    alesid  lstrstyp   alestyp         -         -         -     mcoup",
+                        "1102, 101, 1, 1, 0, 0, 0, -1",
+                        "$#   start       end      pfac      fric         -      flip",
+                        "0.0, 1.0e10, 0.1, 0.0, 0, 0",
+                        "*END",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            inspected = inspect_keyword_deck("main.k", config=self._config(root))
+            checked = check_keyword_deck("main.k", config=self._config(root))
+
+            self.assertTrue(inspected["ok"])
+            self.assertEqual(inspected["groups"]["fsi"]["keywords"]["*ALE_STRUCTURED_FSI"], 1)
+            self.assertEqual(
+                inspected["groups"]["material"]["keywords"]["*MAT_RIGID_DISCRETE_TITLE"],
+                1,
+            )
+            self.assertEqual(
+                inspected["blast_impact"]["keywords"]["*MAT_RIGID_DISCRETE_TITLE"],
+                1,
+            )
+            self.assertEqual(
+                inspected["blast_impact"]["keywords"]["*ALE_STRUCTURED_FSI"],
+                1,
+            )
+            self.assertNotIn(
+                "fsi_database_missing",
+                {issue["code"] for issue in checked["issues"]},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

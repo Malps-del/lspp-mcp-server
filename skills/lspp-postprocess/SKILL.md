@@ -13,7 +13,7 @@ description: Plan and execute LS-PrePost/LS-DYNA preprocessing, solving, and pos
    - Single contour image: use `export_d3plot_contour`.
    - Node history: use `extract_d3plot_node_history`.
    - ASCII curve: use `extract_ascii_curve`.
-   - Binout curve: use `extract_binout_curve`.
+   - Binout contents, curves, and metrics: use `inspect_binout_contents`, `extract_binout_curve`, and `extract_binout_metrics`. Prefer the lasso backend for large MPP `binout*` shard sets.
    - Many cases with the same task list: use `batch_postprocess_cases`.
    - Many states/times/views from the same d3plot/d3part: use `export_d3plot_contour_frames` when all frames share the same display settings.
    - Result directory inspection and metrics: use `inspect_lsdyna_results`, `extract_lsdyna_metrics`, and `compare_lsdyna_cases`.

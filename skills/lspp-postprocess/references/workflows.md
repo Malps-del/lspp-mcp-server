@@ -86,6 +86,11 @@ Use `mass_points` only when the user wants simplified concentrated masses instea
 
 Use `internal_fill` only for neutral geometric occupancy setup. It can auto-create a cylindrical `*INITIAL_VOLUME_FRACTION_GEOMETRY` fill when given `fmsid`, `bammg`, `fammg`, and optional fill radius.
 
+For similar S-ALE cylindrical assemblies with regular discrete attached blocks, preserve the two validated modeling choices from the runnable reference case:
+
+- Prefer `*ALE_STRUCTURED_FSI` for coupling S-ALE domains to the Lagrangian block/shell structure. Do not default to `*CONSTRAINED_LAGRANGE_IN_SOLID` for these templates unless the user explicitly needs a CLIS workflow.
+- Model regular attached mass blocks with `*MAT_RIGID_DISCRETE_TITLE` when the intent is discrete rigid lumped blocks rather than deformable solids or ordinary rigid parts.
+
 After generating an assembly, inspect the returned `check`. If visual confirmation is needed, call `preview_lsdyna_keyword_model`.
 
 ## S-ALE Fluid Domain Generation
@@ -98,7 +103,7 @@ Use `materials` to preserve user-specified AMMG, material ID, EOS ID, density, r
 
 Use `fills` for neutral initial occupancy setup. The fill geometry options are the same as `create_initial_volume_fraction_geometry`.
 
-After generating the domain, inspect the returned `check`. If the model is intended to interact with Lagrangian structure, the current tool does not automatically create FSI coupling; ask for or generate that as a separate controlled step.
+After generating the domain, inspect the returned `check`. If the model is intended to interact with Lagrangian structure, the current tool does not automatically create FSI coupling; ask for or generate that as a separate controlled step. For structured S-ALE coupling templates, prefer `*ALE_STRUCTURED_FSI` as the default FSI keyword family.
 
 ## ALE Volume Filling
 
@@ -163,7 +168,15 @@ Use `extract_d3plot_node_history` for d3plot node history curves when the result
 
 Use `extract_ascii_curve` for `nodout`, `matsum`, `glstat`, `rcforc`, and similar ASCII outputs.
 
-Use `extract_binout_curve` for `binout` or `binout0000`. Remember that `entity_index` in binout plotting is LS-PrePost's entity index, not always LS-DYNA part ID, node ID, or interface ID.
+Use `inspect_binout_contents` before extracting from unfamiliar binout files. It uses the lasso backend and reports top-level blocks, variable names, shapes, dtypes, and time ranges.
+
+Use `extract_binout_curve` for `binout`, `binout0000`, or `binout*`. Prefer `backend="lasso"` or `backend="auto"` for large MPP binout shards; the lasso backend reads files directly and does not start LS-PrePost. Use `backend="lsprepost"` only for legacy binaski workflows, small files, or cases where the GUI/binaski path is known to work.
+
+When the user passes `binout0000` and sibling `binout*` files exist, the lasso backend should read the whole shard set through a glob. Keep all matched files inside `allowed_roots`.
+
+For lasso extraction, use variable paths such as `glstat/kinetic_energy`, `matsum/internal_energy`, `nodout/y_displacement`, `dbfsi/pres`, `dbfsi/fx`, `dbfsi/fy`, `dbfsi/fz`, `trhist/sx`, `trhist/sy`, and `trhist/sz`. For 2D variables, pass zero-based `entity_index` to export one entity as `time,value`; omit it to export all entities with `ids` or `legend_ids` as column labels.
+
+Use `extract_binout_metrics` for direct binout metrics such as peak, time at peak, min, final value, and positive impulse. For `trhist`, use `variable="p_proxy"` or `pressure_proxy=true` to compute `p_proxy = -(sx + sy + sz) / 3` and underwater-pressure summaries such as peak pressure, arrival time, shock impulse, and post-shock/bubble impulse.
 
 ## Many Cases
 

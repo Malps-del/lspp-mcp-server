@@ -28,7 +28,7 @@ KEYWORD_GROUPS: dict[str, tuple[str, ...]] = {
     "boundary": ("*BOUNDARY_",),
     "initial": ("*INITIAL_",),
     "ale": ("*ALE_", "*CONTROL_ALE", "*BOUNDARY_SALE", "*INITIAL_VOLUME_FRACTION"),
-    "fsi": ("*CONSTRAINED_LAGRANGE_IN_SOLID", "*DATABASE_FSI"),
+    "fsi": ("*ALE_STRUCTURED_FSI", "*CONSTRAINED_LAGRANGE_IN_SOLID", "*DATABASE_FSI"),
     "contact": ("*CONTACT_",),
     "load": ("*LOAD_",),
     "include": ("*INCLUDE",),
@@ -44,6 +44,8 @@ BLAST_IMPACT_KEYWORDS = {
     "*MAT_PLASTIC_KINEMATIC_TITLE",
     "*MAT_RIGID",
     "*MAT_RIGID_TITLE",
+    "*MAT_RIGID_DISCRETE",
+    "*MAT_RIGID_DISCRETE_TITLE",
     "*MAT_NULL",
     "*MAT_NULL_TITLE",
     "*MAT_VACUUM",
@@ -61,6 +63,7 @@ BLAST_IMPACT_KEYWORDS = {
     "*ALE_STRUCTURED_MESH",
     "*ALE_STRUCTURED_MESH_CONTROL_POINTS",
     "*ALE_STRUCTURED_MULTI-MATERIAL_GROUP",
+    "*ALE_STRUCTURED_FSI",
     "*SET_MULTI-MATERIAL_GROUP_LIST",
     "*CONSTRAINED_LAGRANGE_IN_SOLID",
     "*BOUNDARY_SALE_MESH_FACE",
@@ -126,6 +129,10 @@ FIELD_SCHEMAS: dict[str, list[list[str]]] = {
     "*ALE_STRUCTURED_MULTI-MATERIAL_GROUP": [["ammgnm", "mid", "eosid", "-", "-", "-", "-", "pref"]],
     "*ALE_STRUCTURED_MULTI-MATERIAL_GROUP_AXISYM": [
         ["ammgnm", "mid", "eosid", "-", "-", "-", "-", "pref"]
+    ],
+    "*ALE_STRUCTURED_FSI": [
+        ["lstrsid", "alesid", "lstrstyp", "alestyp", "-", "-", "-", "mcoup"],
+        ["start", "end", "pfac", "fric", "-", "flip"],
     ],
 }
 
@@ -701,13 +708,13 @@ def _issues(blocks: list[KeywordBlock], includes: list[dict[str, Any]]) -> list[
                 }
             )
 
-    has_fsi = counts["*CONSTRAINED_LAGRANGE_IN_SOLID"] > 0
-    if has_fsi and not database["fsi"]["present"]:
+    has_clis_fsi = counts["*CONSTRAINED_LAGRANGE_IN_SOLID"] > 0
+    if has_clis_fsi and not database["fsi"]["present"]:
         issues.append(
             {
                 "severity": "info",
                 "code": "fsi_database_missing",
-                "message": "FSI coupling is present, but *DATABASE_FSI was not found.",
+                "message": "CLIS FSI coupling is present, but *DATABASE_FSI was not found.",
             }
         )
 

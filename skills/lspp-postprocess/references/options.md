@@ -96,6 +96,20 @@ Use `inspect_lsdyna_results` before broad post-processing requests. It identifie
 
 Use `extract_lsdyna_metrics` on CSV curves when the user asks for peak values, time at peak, final values, mean/RMS, or impulse/integral. Use `compare_lsdyna_cases` when the same metric should be extracted across many case folders.
 
+For LS-DYNA binout files, prefer the lasso backend for large MPP outputs:
+
+- `backend="auto"` tries lasso first, then falls back to LS-PrePost/binaski.
+- `backend="lasso"` requires optional `lasso-python` and supports direct MPP shard reads from `binout*`.
+- `backend="lsprepost"` preserves the original binaski + xyplot CSV export path.
+
+Install the optional Python backend as part of this MCP environment with:
+
+```bash
+pip install -e ".[binout]"
+```
+
+Use `inspect_binout_contents` to list blocks and variable shapes before extracting. Use `extract_binout_curve` for CSV and `extract_binout_metrics` for direct peak/impulse summaries. Lasso-supported common paths include `glstat/kinetic_energy`, `matsum/internal_energy`, `nodout/y_displacement`, `dbfsi/pres`, `dbfsi/fx`, `dbfsi/fy`, `dbfsi/fz`, `trhist/sx`, `trhist/sy`, and `trhist/sz`.
+
 ## Keyword Deck Checks
 
 Current keyword inspection recognizes common LS-DYNA preprocessing families:

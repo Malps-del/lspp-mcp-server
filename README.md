@@ -54,8 +54,10 @@ Set-Location $McpDir
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe -m pip install -e ".[binout]"
 ```
+
+这个命令会同时安装大型 MPP binout 读取所需的可选 Python 后端，包括 `lasso-python`、`h5py`、`pandas` 和 `rich`。如果只需要最小安装，也可以使用 `.\.venv\Scripts\python.exe -m pip install -e .`，但之后使用 `backend="lasso"` 读取 binout 时需要再补装 `binout` 依赖组。
 
 安装完成后运行测试：
 
@@ -354,6 +356,57 @@ run.json
 ### extract_binout_curve
 
 从 `binout` 或 `binout0000` 提取 `glstat`、`matsum`、`trhist`、`dbfsi` 等 block 下的变量曲线，并保存为 CSV。
+
+支持 `backend="auto" | "lasso" | "lsprepost"`。`lsprepost` 保留原有 LS-PrePost/binaski + xyplot 导出路径，适合小文件或 GUI/binaski 可稳定读取的场景；`lasso` 使用可选的 `lasso-python` 直接读取 binout，推荐用于大型 MPP `binout*` 分片批处理；`auto` 会先尝试 lasso，失败后回退到 LS-PrePost。
+
+如果按照上面的推荐部署命令 `pip install -e ".[binout]"` 安装，lasso 后端已经包含在 MCP 虚拟环境中。旧环境或最小安装环境可以用下面命令补装：
+
+```bash
+.\.venv\Scripts\python.exe -m pip install -e ".[binout]"
+```
+
+示例：
+
+```python
+extract_binout_curve(
+    binout_path="D:/lsdyna-projects/case01/binout0000",
+    block="glstat",
+    variable="kinetic_energy",
+    output_csv="D:/lsdyna-projects/case01/post/glstat_ke.csv",
+    backend="lasso",
+)
+
+extract_binout_curve(
+    binout_path="D:/lsdyna-projects/case01/binout*",
+    block="dbfsi",
+    variable="pres",
+    output_csv="D:/lsdyna-projects/case01/post/dbfsi_pres.csv",
+    backend="lasso",
+)
+```
+
+lasso 后端支持 `glstat/time`、`glstat/kinetic_energy`、`matsum/internal_energy`、`nodout/y_displacement`、`dbfsi/pres`、`dbfsi/fx`、`dbfsi/fy`、`dbfsi/fz`、`trhist/sx`、`trhist/sy`、`trhist/sz` 等变量路径。二维变量指定 `entity_index` 时输出 `time,value`；不指定时输出所有实体列，列名优先使用 binout 中的 `ids` 或 `legend_ids`。
+
+### inspect_binout_contents
+
+使用 lasso 后端列出 binout 顶层数据块、各 block 下变量名、变量 shape/dtype，以及 time 的起止时间和步数。适合在大型 MPP binout 批处理前先确认可用数据。
+
+```python
+inspect_binout_contents(
+    binout_path="D:/lsdyna-projects/case01/binout*",
+    backend="lasso",
+)
+```
+
+### extract_binout_metrics
+
+使用 lasso 后端直接从 binout 提取常用指标，包括 `peak`、`time_at_peak`、`min`、`final` 和 `positive_impulse`。对 `trhist` 支持压力代理量：
+
+```text
+p_proxy = -(sx + sy + sz) / 3
+```
+
+可用于水下爆炸压力时程的 peak pressure、arrival time、shock impulse、post-shock/bubble impulse 汇总。
 
 ### batch_postprocess_cases
 

@@ -19,6 +19,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+binout = [
+  "lasso-python",
+  "h5py",
+  "pandas",
+  "rich"
+]
 dev = [
   "pytest>=8"
 ]

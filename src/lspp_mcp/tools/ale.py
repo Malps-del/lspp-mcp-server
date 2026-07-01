@@ -32,7 +32,7 @@ def _fmt(value: int | float | str) -> str:
 
 
 def _line(values: list[int | float | str]) -> str:
-    return " ".join(f"{_fmt(value):>10}" for value in values).rstrip()
+    return ", ".join(_fmt(value) for value in values)
 
 
 def _number_triplet(values: Any, label: str) -> list[float]:

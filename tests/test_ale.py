@@ -49,11 +49,29 @@ class AleToolTests(unittest.TestCase):
         )
 
         self.assertIn("*INITIAL_VOLUME_FRACTION_GEOMETRY", rendered)
-        self.assertIn("         1          1          1          3", rendered)
-        self.assertIn("         4          0          3", rendered)
-        self.assertIn("        25         75          0         25         75          1          8          8", rendered)
-        self.assertIn("         5          0          4", rendered)
-        self.assertIn("        65         35          0         85         65          1          0", rendered)
+        self.assertIn("1, 1, 1, 3", rendered)
+        self.assertIn("4, 0, 3, 0, 0, 0", rendered)
+        self.assertIn("25, 75, 0, 25, 75, 1, 8, 8", rendered)
+        self.assertIn("5, 0, 4, 0, 0, 0", rendered)
+        self.assertIn("65, 35, 0, 85, 65, 1, 0", rendered)
+
+    def test_render_initial_volume_fraction_geometry_uses_commas_for_long_values(self) -> None:
+        rendered = render_initial_volume_fraction_geometry(
+            fmsid=101,
+            fmidtyp=1,
+            bammg=1,
+            fills=[
+                {
+                    "geometry": "cylinder",
+                    "fammg": 3,
+                    "point0": [1.649, 0.02292045, 0.3852976349],
+                    "point1": [1.649, 0.02292045, 0.9852043651],
+                    "radius": 0.125,
+                },
+            ],
+        )
+
+        self.assertIn("1.649, 0.02292045, 0.3852976349, 1.649, 0.02292045, 0.9852043651, 0.125, 0.125", rendered)
 
     def test_create_and_inspect_initial_volume_fraction_geometry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
