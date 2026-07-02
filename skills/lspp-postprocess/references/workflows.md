@@ -176,6 +176,8 @@ When the user passes `binout0000` and sibling `binout*` files exist, the lasso b
 
 For lasso extraction, use variable paths such as `glstat/kinetic_energy`, `matsum/internal_energy`, `nodout/y_displacement`, `dbfsi/pres`, `dbfsi/fx`, `dbfsi/fy`, `dbfsi/fz`, `trhist/sx`, `trhist/sy`, and `trhist/sz`. For 2D variables, pass zero-based `entity_index` to export one entity as `time,value`; omit it to export all entities with `ids` or `legend_ids` as column labels.
 
+For LS-PrePost/binaski extraction, do not assume lasso variable names are valid component names. In particular, `block="trhist"` with pressure aliases (`pressure`, `Pressure`, `pres`) must use the LS-PrePost component `Pressure` and plot with `trhist 1 1 <tracer_id>`, where `<tracer_id>` is the public zero-based `entity_index` plus one. Do not add a separate `binaski tracer` command for this workflow.
+
 Use `extract_binout_metrics` for direct binout metrics such as peak, time at peak, min, final value, and positive impulse. For `trhist`, use `variable="p_proxy"` or `pressure_proxy=true` to compute `p_proxy = -(sx + sy + sz) / 3` and underwater-pressure summaries such as peak pressure, arrival time, shock impulse, and post-shock/bubble impulse.
 
 ## Many Cases

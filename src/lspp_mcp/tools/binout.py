@@ -34,6 +34,7 @@ from ._common import (
 VALID_BINOUT_BLOCKS = {"glstat", "matsum", "nodout", "trhist", "dbfsi"}
 VALID_BINOUT_BACKENDS = {"auto", "lasso", "lsprepost"}
 DEFAULT_METRICS = ("peak", "time_at_peak", "min", "final", "positive_impulse")
+TRHIST_PRESSURE_ALIASES = {"p", "pres", "pressure", "press"}
 INSTALL_LASSO_MESSAGE = (
     "lasso-python is required for backend='lasso'. Install it with: "
     "pip install lasso-python h5py pandas rich"
@@ -96,6 +97,31 @@ def _resolve_binout_entry(
             "entity_index",
         ),
     }
+
+
+def _resolve_lsprepost_binout_entry(
+    variable_maps: dict[str, Any],
+    block: str,
+    variable: str,
+    entity_index: int | None,
+) -> dict[str, Any]:
+    if block == "trhist":
+        tracer_index0 = positive_int(0 if entity_index is None else entity_index, "entity_index")
+        tracer_id = tracer_index0 + 1
+        variable_text = variable.strip()
+        component = (
+            "Pressure"
+            if variable_text.lower() in TRHIST_PRESSURE_ALIASES
+            else safe_token(variable_text, "binout variable")
+        )
+        return {
+            "binout_variable": component,
+            "index1": 1,
+            "index2": 1,
+            "entity_index": tracer_id,
+        }
+    resolved = _resolve_binout_entry(variable_maps, block, variable, entity_index)
+    return resolved
 
 
 def _path_has_glob(path: str) -> bool:
@@ -287,6 +313,32 @@ def _write_lasso_csv(
         writer.writerow(["time", *headers])
         for time_value, values in zip(times, rows):
             writer.writerow([time_value, *values])
+
+
+def _trim_empty_tail(row: list[str]) -> list[str]:
+    trimmed = list(row)
+    while trimmed and not trimmed[-1].strip():
+        trimmed.pop()
+    return trimmed
+
+
+def _normalize_lsprepost_csv(path: Path) -> bool:
+    try:
+        with path.open(newline="", encoding="utf-8", errors="replace") as handle:
+            rows = list(csv.reader(handle))
+    except OSError:
+        return False
+    if len(rows) < 2:
+        return False
+    first = rows[0][0].strip().lower() if rows[0] else ""
+    second = rows[1][0].strip().lower() if rows[1] else ""
+    if "ls-dyna" not in first or second != "time":
+        return False
+    normalized = [_trim_empty_tail(row) for row in rows[1:]]
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerows(normalized)
+    return True
 
 
 def _curve_from_lasso(
@@ -509,6 +561,96 @@ def _extract_binout_curve_lasso(
     }
 
 
+def _read_text_tail(path: Path, max_chars: int = 6000) -> str:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    return text[-max_chars:]
+
+
+def _collect_lsprepost_messages(
+    output: Path,
+    cfile_path: Path,
+    log_file: Path,
+    run_result: Any,
+) -> dict[str, Any]:
+    candidates = [
+        cfile_path.parent / "lspost.msg",
+        output.parent / "lspost.msg",
+        Path.cwd() / "lspost.msg",
+        log_file.parent / "lspost.msg",
+    ]
+    seen: set[Path] = set()
+    sources: list[dict[str, str]] = []
+    combined_parts: list[str] = []
+    for candidate in candidates:
+        resolved = candidate.resolve(strict=False)
+        if resolved in seen or not resolved.exists():
+            continue
+        seen.add(resolved)
+        text = _read_text_tail(resolved)
+        if text:
+            sources.append({"path": str(resolved), "tail": text})
+            combined_parts.append(text)
+    if getattr(run_result, "stdout", ""):
+        combined_parts.append(str(run_result.stdout))
+    if getattr(run_result, "stderr", ""):
+        combined_parts.append(str(run_result.stderr))
+    combined = "\n".join(combined_parts)
+    lowered = combined.lower()
+    known_patterns = [
+        "component not recognized",
+        "xy plot window #1 is not open",
+        "xy plot window",
+        "not recognized",
+        "error",
+        "warning",
+    ]
+    findings = [pattern for pattern in known_patterns if pattern in lowered]
+    return {
+        "sources": sources,
+        "findings": findings,
+        "tail": combined[-6000:] if combined else "",
+    }
+
+
+def _append_lsprepost_diagnostics(
+    result: dict[str, Any],
+    output: Path,
+    cfile_path: Path,
+    log_file: Path,
+    run_result: Any,
+    block: str,
+    variable: str,
+) -> dict[str, Any]:
+    if result.get("ok"):
+        return result
+    diagnostics = _collect_lsprepost_messages(output, cfile_path, log_file, run_result)
+    if not diagnostics["tail"]:
+        return result
+    snippets: list[str] = []
+    tail_lower = diagnostics["tail"].lower()
+    for phrase in ("component not recognized", "XY Plot Window #1 is not open"):
+        if phrase.lower() in tail_lower:
+            snippets.append(phrase)
+    if not snippets and diagnostics["findings"]:
+        snippets.extend(diagnostics["findings"][:3])
+    if snippets:
+        result["message"] = (
+            f"{result['message']} LS-PrePost diagnostics: "
+            f"{'; '.join(snippets)}."
+        )
+    if block == "trhist" and variable.lower() in TRHIST_PRESSURE_ALIASES:
+        result["message"] = (
+            f"{result['message']} For trhist pressure, use LS-PrePost component "
+            "`Pressure` and plot with `trhist 1 1 <tracer_id>`, where "
+            "`tracer_id` is the public zero-based entity_index plus one."
+        )
+    result["lsprepost_diagnostics"] = diagnostics
+    return result
+
+
 def _extract_binout_curve_lsprepost(
     binout_path: str,
     block: str,
@@ -527,7 +669,9 @@ def _extract_binout_curve_lsprepost(
         )
     source = _resolve_binout_source(binout_path, config)
     output = prepare_output(output_csv, config, overwrite)
-    resolved = _resolve_binout_entry(config.variable_maps, block, variable, entity_index)
+    resolved = _resolve_lsprepost_binout_entry(
+        config.variable_maps, block, variable, entity_index
+    )
     context = {
         "binout_path": quote_path(source["lsprepost_input"]),
         "block": block,
@@ -550,14 +694,20 @@ def _extract_binout_curve_lsprepost(
         config=config,
         timeout=timeout,
     )
+    csv_normalized = False
+    if output.exists() and output.stat().st_size > 0:
+        csv_normalized = _normalize_lsprepost_csv(output)
     result = finalize_output_result(
         "output_csv", output, cfile_path, log_file, run_result, output_check
     )
+    result["csv_normalized"] = csv_normalized
     result["backend"] = "lsprepost"
     result["binout_source"] = str(source["lsprepost_input"])
     result["matched_files"] = source["matched_files"]
     result["mpp_shards"] = source["mpp_shards"]
-    return result
+    return _append_lsprepost_diagnostics(
+        result, output, cfile_path, log_file, run_result, block, variable
+    )
 
 
 def extract_binout_curve(

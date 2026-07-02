@@ -380,6 +380,154 @@ class RunnerMockTests(unittest.TestCase):
             self.assertIn("ntime 8", Path(node_history["generated_cfile"]).read_text(encoding="utf-8"))
             self.assertIn("binaski plot", Path(binout["generated_cfile"]).read_text(encoding="utf-8"))
 
+    def test_lsprepost_trhist_pressure_uses_pressure_component(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "binout0000").write_text("fake", encoding="utf-8")
+            cfg = self._config(root)
+            fake_run = Mock(
+                return_value=RunResult(
+                    ok=True,
+                    message="ok",
+                    command=[],
+                    returncode=0,
+                    stdout="",
+                    stderr="",
+                    log_file=None,
+                )
+            )
+
+            with patch("lspp_mcp.tools._common.run_lsprepost", fake_run):
+                result = extract_binout_curve(
+                    "binout0000",
+                    block="trhist",
+                    variable="pressure",
+                    entity_index=0,
+                    output_csv="post/trhist_pressure.csv",
+                    backend="lsprepost",
+                    config=cfg,
+                )
+
+            generated = Path(result["generated_cfile"]).read_text(encoding="utf-8")
+            self.assertIn("binaski loadblock /trhist", generated)
+            self.assertNotIn("binaski tracer", generated)
+            self.assertIn('binaski plot "', generated)
+            self.assertIn(" trhist 1 1 1 Pressure ;", generated)
+
+    def test_lsprepost_trhist_pressure_uses_third_plot_index_for_tracer_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "binout0000").write_text("fake", encoding="utf-8")
+            cfg = self._config(root)
+            fake_run = Mock(
+                return_value=RunResult(
+                    ok=True,
+                    message="ok",
+                    command=[],
+                    returncode=0,
+                    stdout="",
+                    stderr="",
+                    log_file=None,
+                )
+            )
+
+            with patch("lspp_mcp.tools._common.run_lsprepost", fake_run):
+                result = extract_binout_curve(
+                    "binout0000",
+                    block="trhist",
+                    variable="pressure",
+                    entity_index=1,
+                    output_csv="post/trhist_pressure_2.csv",
+                    backend="lsprepost",
+                    config=cfg,
+                )
+
+            generated = Path(result["generated_cfile"]).read_text(encoding="utf-8")
+            self.assertNotIn("binaski tracer", generated)
+            self.assertIn(" trhist 1 1 2 Pressure ;", generated)
+            self.assertNotIn(" trhist 2 2 2 Pressure ;", generated)
+
+    def test_lsprepost_missing_binout_csv_reports_msg_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "binout0000").write_text("fake", encoding="utf-8")
+            cfg = self._config(root)
+
+            def fake_run(*args, **kwargs):
+                cfile_path = Path(kwargs["cfile_path"])
+                (cfile_path.parent / "lspost.msg").write_text(
+                    "component not recognized\nXY Plot Window #1 is not open\n",
+                    encoding="utf-8",
+                )
+                return RunResult(
+                    ok=True,
+                    message="ok",
+                    command=[],
+                    returncode=0,
+                    stdout="",
+                    stderr="",
+                    log_file=None,
+                )
+
+            with patch("lspp_mcp.tools._common.run_lsprepost", side_effect=fake_run):
+                result = extract_binout_curve(
+                    "binout0000",
+                    block="trhist",
+                    variable="pressure",
+                    entity_index=0,
+                    output_csv="post/trhist_pressure.csv",
+                    backend="lsprepost",
+                    config=cfg,
+                )
+
+            self.assertFalse(result["ok"])
+            self.assertIn("component not recognized", result["message"])
+            self.assertIn("XY Plot Window #1 is not open", result["message"])
+            self.assertIn("Pressure", result["message"])
+
+    def test_lsprepost_binout_csv_removes_prepost_title_row(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "binout0000").write_text("fake", encoding="utf-8")
+            output = root / "post" / "trhist_pressure.csv"
+            cfg = self._config(root)
+
+            def fake_run(*args, **kwargs):
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text(
+                    "LS-DYNA keyword deck by LS-PrePost,Pressure\n"
+                    "Time,Pressure @ 1,\n"
+                    "0.0,5.0,\n",
+                    encoding="utf-8",
+                )
+                return RunResult(
+                    ok=True,
+                    message="ok",
+                    command=[],
+                    returncode=0,
+                    stdout="",
+                    stderr="",
+                    log_file=None,
+                )
+
+            with patch("lspp_mcp.tools._common.run_lsprepost", side_effect=fake_run):
+                result = extract_binout_curve(
+                    "binout0000",
+                    block="trhist",
+                    variable="pressure",
+                    entity_index=0,
+                    output_csv="post/trhist_pressure.csv",
+                    backend="lsprepost",
+                    config=cfg,
+                )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(result["csv_normalized"])
+            self.assertEqual(
+                output.read_text(encoding="utf-8").splitlines(),
+                ["Time,Pressure @ 1", "0.0,5.0"],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
